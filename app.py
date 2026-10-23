@@ -102,7 +102,7 @@ if all_sheets_dict:
     st.sidebar.markdown("---")
     
     if view_mode == "🏠 Main Dashboard (Summary)":
-        st.markdown(f"<h1 style='text-align: center; color: {PRIMARY_COLOR};'>Northwind Traders Monthly Performance</h1>", unsafe_allow_html=True)
+        st.markdown(f"<h1 style='text-align: center; color: {PRIMARY_COLOR};'>FRONTECH Monthly Performance</h1>", unsafe_allow_html=True)
         st.markdown("<p style='text-align: center; font-size: 16px;'>Executive summary compiled from SalesSummary, DailySalesReport, and SalesPDTSummary</p>", unsafe_allow_html=True)
         st.markdown("---")
         
