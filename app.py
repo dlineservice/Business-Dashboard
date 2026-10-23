@@ -31,50 +31,56 @@ def load_and_process_dashboard_data():
             sales_cols = [c for c in df_clean.columns if 'sales' in c or 'value' in c or 'amount' in c]
             qty_cols = [c for c in df_clean.columns if 'qty' in c or 'quantity' in c or 'count' in c]
             
-            # 🎯 ১. 'SalesSummary' শীট থেকে শুধুমাত্র Sales এবং ব্রাঞ্চ চার্টের ডেটা নেওয়া হবে
+            # 🎯 ১. 'SalesSummary' শীটের শেষ লাইন থেকে একক সংখ্যা হিসেবে Sales নেওয়া
             if sheet.strip().lower() == "salessummary" and not df_clean.empty:
                 last_row = df_clean.iloc[-1]
                 if sales_cols:
-                    val = pd.to_numeric(last_row[sales_cols], errors='coerce')
+                    # .values[0] দিয়ে নিশ্চিত করা হচ্ছে এটি একক সংখ্যা, কোনো সিরিজ নয়
+                    val = pd.to_numeric(last_row[sales_cols].values[0], errors='coerce')
                     if pd.notna(val):
                         total_business_sales = float(val)
+                
+                # যদি শেষ রো ফাঁকা থাকে বা জিরো দেখায়, তবে তার আগের রো চেক করবে
                 if total_business_sales == 0.0 and len(df_clean) > 1:
                     last_row = df_clean.iloc[-2]
                     if sales_cols:
-                        val = pd.to_numeric(last_row[sales_cols], errors='coerce')
+                        val = pd.to_numeric(last_row[sales_cols].values[0], errors='coerce')
                         if pd.notna(val):
                             total_business_sales = float(val)
 
+                # ব্রাঞ্চ চার্টের ডেটা প্রসেসিং (শুধুমাত্র SalesSummary থেকে)
                 branch_cols = [c for c in df_clean.columns if 'branch' in c or 'zone' in c or 'location' in c or 'state' in c]
                 if branch_cols and sales_cols:
-                    b_col = branch_cols
-                    s_col = sales_cols
+                    b_col = branch_cols[0]
+                    s_col = sales_cols[0]
                     for idx, row in df_clean.iterrows():
                         b_name = str(row[b_col]).upper().strip()
                         b_val = pd.to_numeric(row[s_col], errors='coerce')
                         if pd.notna(b_val) and b_name not in ['NAN', '', 'GRAND TOTAL', 'TOTAL']:
                             branch_summary_dict[b_name] = branch_summary_dict.get(b_name, 0) + b_val
 
-            # 🎯 ২. 'DailySalesReport' শীটের শেষ লাইনের Qty কলাম থেকে কোয়ান্টিটি ভ্যালু নেওয়া হবে
+            # 🎯 ২. 'DailySalesReport' শীটের শেষ লাইন থেকে একক সংখ্যা হিসেবে Qty নেওয়া
             if sheet.strip().lower() == "dailysalesreport" and not df_clean.empty:
                 last_row_qty = df_clean.iloc[-1]
                 if qty_cols:
-                    val_qty = pd.to_numeric(last_row_qty[qty_cols], errors='coerce')
+                    val_qty = pd.to_numeric(last_row_qty[qty_cols].values[0], errors='coerce')
                     if pd.notna(val_qty):
                         total_business_qty = float(val_qty)
+                
+                # যদি শেষ রো ফাঁকা থাকে বা জিরো দেখায়, তবে তার আগের রো চেক করবে
                 if total_business_qty == 0.0 and len(df_clean) > 1:
                     last_row_qty = df_clean.iloc[-2]
                     if qty_cols:
-                        val_qty = pd.to_numeric(last_row_qty[qty_cols], errors='coerce')
+                        val_qty = pd.to_numeric(last_row_qty[qty_cols].values[0], errors='coerce')
                         if pd.notna(val_qty):
                             total_business_qty = float(val_qty)
 
-            # 📦 ৩. 'SalesPDTSummary' শীট থেকে প্রোডাক্ট চার্টের ডেটা নেওয়া হবে
+            # 📦 ৩. 'SalesPDTSummary' শীট থেকে প্রোডাক্ট চার্টের ডেটা নেওয়া
             if sheet.strip().lower() == "salespdtsummary" and not df_clean.empty:
                 pdt_cols = [c for c in df_clean.columns if 'product' in c or 'item' in c or 'category' in c or 'fly' in c]
                 if pdt_cols and sales_cols:
-                    p_col = pdt_cols
-                    s_col = sales_cols
+                    p_col = pdt_cols[0]
+                    s_col = sales_cols[0]
                     for idx, row in df_clean.iterrows():
                         p_name = str(row[p_col]).strip()
                         p_val = pd.to_numeric(row[s_col], errors='coerce')
@@ -136,7 +142,7 @@ if all_sheets_dict:
         
         excel_file = pd.ExcelFile("sales_data.xlsx")
         df_sheet = pd.read_excel(excel_file, sheet_name=selected_sheet, skiprows=1)
-        st.subheader(f"📋 টেব일: {selected_sheet} (মোট ডেটা সারি: {len(df_sheet)})")
+        st.subheader(f"📋 টেবিল: {selected_sheet} (মোট ডেটা সারি: {len(df_sheet)})")
         
         if len(df_sheet.columns) > 0:
             filter_column = st.selectbox("🎯 ফিল্টার করার জন্য একটি কলাম বেছে নিন:", options=df_sheet.columns)
