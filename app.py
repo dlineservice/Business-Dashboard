@@ -45,19 +45,25 @@ def load_and_process_dashboard_data():
             df_clean = df.copy()
             df_clean.columns = [str(col).strip().lower() for col in df_clean.columns]
             
-            # সেলস ভ্যালু কলাম খুঁজে বের করা
+            # সেলস ভ্যালু এবং কোয়ান্টিটি কলামের নাম ম্যাচিং
             sales_cols = [c for c in df_clean.columns if 'sales' in c or 'value' in c or 'amount' in c]
             qty_cols = [c for c in df_clean.columns if 'qty' in c or 'quantity' in c or 'count' in c]
             
-            # মোট সেলস এবং কোয়ান্টিটি ক্যালকুলেশন
-            if sales_cols:
-                for col in sales_cols:
-                    total_business_sales += pd.to_numeric(df_clean[col], errors='coerce').sum()
-            if qty_cols:
-                for col in qty_cols:
-                    total_business_qty += pd.to_numeric(df_clean[col], errors='coerce').sum()
+            # 🎯 শুধুমাত্র 'SalesSummary' শীট থেকে প্রধান KPI (Sales & Qty) হিসাব করা হবে
+            if sheet.strip().lower() == "salessummary":
+                if sales_cols:
+                    total_business_sales = pd.to_numeric(df_clean[sales_cols[0]], errors='coerce').sum()
+                if qty_cols:
+                    total_business_qty = pd.to_numeric(df_clean[qty_cols[0]], errors='coerce').sum()
             
-            # ১. ব্রাঞ্চ ভিত্তিক ডেটা প্রসেস (লিস্টের পরিবর্তে প্রথম ম্যাচিং কলাম ধরে)
+            # যদি কোনো কারণে ফাইলে SalesSummary শীট না থাকে, তবে প্রথম শীট থেকে ব্যাকআপ হিসাব নেবে
+            elif total_business_sales == 0.0 and sheet == sheet_names[0]:
+                if sales_cols:
+                    total_business_sales = pd.to_numeric(df_clean[sales_cols[0]], errors='coerce').sum()
+                if qty_cols:
+                    total_business_qty = pd.to_numeric(df_clean[qty_cols[0]], errors='coerce').sum()
+
+            # ব্রাঞ্চ ভিত্তিক ডেটা প্রসেস
             branch_cols = [c for c in df_clean.columns if 'branch' in c or 'zone' in c or 'location' in c or 'state' in c]
             if branch_cols and sales_cols:
                 b_col = branch_cols[0]
@@ -68,7 +74,7 @@ def load_and_process_dashboard_data():
                     if pd.notna(b_val) and b_name not in ['NAN', '', 'GRAND TOTAL', 'TOTAL']:
                         branch_summary_dict[b_name] = branch_summary_dict.get(b_name, 0) + b_val
 
-            # ২. প্রোডাক্ট ভিত্তিক ডেটা প্রসেস (ইউজারের চাহিদা অনুযায়ী SalesPDTSummary শীটকে অগ্রাধিকার দিয়ে)
+            # প্রোডাক্ট ভিত্তিক ডেটা প্রসেস (SalesPDTSummary শীটকে অগ্রাধিকার দিয়ে)
             if sheet.strip().lower() == "salespdtsummary":
                 pdt_cols = [c for c in df_clean.columns if 'product' in c or 'item' in c or 'category' in c or 'fly' in c]
                 if pdt_cols and sales_cols:
@@ -80,7 +86,6 @@ def load_and_process_dashboard_data():
                         if pd.notna(p_val) and p_name not in ['nan', '', 'GRAND TOTAL', 'TOTAL']:
                             product_summary_dict[p_name] = product_summary_dict.get(p_name, 0) + p_val
             
-            # যদি SalesPDTSummary শীট ছাড়া অন্য কোনো শীটেও প্রোডাক্ট কলাম থাকে এবং ডিকশনারি খালি থাকে
             elif not product_summary_dict:
                 pdt_cols = [c for c in df_clean.columns if 'product' in c or 'item' in c or 'category' in c or 'fly' in c]
                 if pdt_cols and sales_cols:
@@ -92,7 +97,7 @@ def load_and_process_dashboard_data():
                         if pd.notna(p_val) and p_name not in ['nan', '', 'GRAND TOTAL', 'TOTAL']:
                             product_summary_dict[p_name] = product_summary_dict.get(p_name, 0) + p_val
 
-        # ডিকশনারি থেকে ডেটাফ্রেমে রূপান্তর
+        # ডেটাফ্রেমে রূপান্তর
         branch_df = pd.DataFrame(list(branch_summary_dict.items()), columns=['Branch', 'Net Sales']).sort_values(by='Net Sales', ascending=False)
         product_df = pd.DataFrame(list(product_summary_dict.items()), columns=['Product Category', 'Total Value']).sort_values(by='Total Value', ascending=False)
         
@@ -114,8 +119,8 @@ if all_sheets_dict:
     
     # --- পেজ ১: মেইন ড্যাসবোর্ড ---
     if view_mode == "🏠 মেইন ড্যাসবোর্ড (Summary)":
-        st.markdown(f"<h1 style='text-align: center; color: {PRIMARY_COLOR};'>FRONTECH Monthly Performance</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center; font-size: 16px;'>সমস্ত শীটের সম্মিলিত ও সংক্ষিপ্ত বিজনেস পারফরম্যান্স রিপোর্ট</p>", unsafe_allow_html=True)
+        st.markdown(f"<h1 style='text-align: center; color: {PRIMARY_COLOR};'>Northwind Traders Monthly Performance</h1>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; font-size: 16px;'>SalesSummary এবং SalesPDTSummary শীটের ওপর ভিত্তি করে তৈরি সংক্ষিপ্ত রিপোর্ট</p>", unsafe_allow_html=True)
         st.markdown("---")
         
         # 📊 KPI কার্ডস
@@ -124,14 +129,14 @@ if all_sheets_dict:
             st.markdown(f"""<div class='kpi-box'>
                 <h3 style='color: #1b5e20; margin:0;'>💰 Total Net Sales</h3>
                 <h2 style='color: #1b5e20; margin:10px 0;'>₹ {total_sales:,.2f}</h2>
-                <small>অল ওভার বিজনেস ভ্যালু</small>
+                <small>SalesSummary থেকে প্রাপ্ত ভ্যালু</small>
             </div>""", unsafe_allow_html=True)
             
         with col2:
             st.markdown(f"""<div class='kpi-box'>
                 <h3 style='color: #1b5e20; margin:0;'>📦 Total Quantity Sold</h3>
                 <h2 style='color: #1b5e20; margin:10px 0;'>{total_qty:,.0f} Pcs</h2>
-                <small>মোট বিক্রিত আইটেম সংখ্যা</small>
+                <small>SalesSummary থেকে প্রাপ্ত মোট কোয়ান্টিটি</small>
             </div>""", unsafe_allow_html=True)
             
         with col3:
@@ -159,7 +164,7 @@ if all_sheets_dict:
                 )
                 st.plotly_chart(fig_branch, use_container_width=True)
             else:
-                st.info("ব্রাঞ্চ ভিত্তিক ডেটা প্রসেস করা সম্ভব হয়নি। এক্সেলে কলামের নাম চেক করুন।")
+                st.info("ব্রাঞ্চ ভিত্তিক ডেটা প্রসেস করা সম্ভব হয়নি।")
                 
         with chart_col2:
             st.markdown(f"<h3 style='color: {PRIMARY_COLOR};'>📦 PRODUCT ACTIVITY (Sales Share)</h3>", unsafe_allow_html=True)
@@ -197,8 +202,3 @@ if all_sheets_dict:
             
             csv = filtered_df.to_csv(index=False).encode("utf-8")
             st.download_button(
-                label=f"📥 {selected_sheet} শীটের ফিল্টার করা ডেটা ডাউনলোড করুন",
-                data=csv,
-                file_name=f"{selected_sheet}_data.csv",
-                mime="text/csv"
-            )
