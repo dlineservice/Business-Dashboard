@@ -16,7 +16,6 @@ def load_and_process_dashboard_data():
         sheet_names = excel_file.sheet_names
         all_sheets_dict = {}
         
-        # একক সংখ্যা হিসেবে ভ্যালু শুরু করা
         total_business_sales = 0.0
         total_business_qty = 0.0
         
@@ -32,58 +31,56 @@ def load_and_process_dashboard_data():
             sales_cols = [c for c in df_clean.columns if 'sales' in c or 'value' in c or 'amount' in c]
             qty_cols = [c for c in df_clean.columns if 'qty' in c or 'quantity' in c or 'count' in c]
             
-            # 🎯 শুধুমাত্র 'SalesSummary' শীট থেকে প্রধান KPI এবং ব্রাঞ্চ চার্টের ডেটা নেওয়া হবে
+            # 🎯 ১. 'SalesSummary' শীট থেকে শুধুমাত্র Sales এবং ব্রাঞ্চ চার্টের ডেটা নেওয়া হবে
             if sheet.strip().lower() == "salessummary" and not df_clean.empty:
-                # শেষ সারি (Total Row) থেকে প্রধান KPI ভ্যালু নেওয়া
                 last_row = df_clean.iloc[-1]
-                
                 if sales_cols:
-                    # প্রথম কলামের ভ্যালুকে সংখ্যায় রূপান্তর করে যোগ করা (সিরিজের অবজেক্ট এড়াতে)
-                    val = pd.to_numeric(last_row[sales_cols[0]], errors='coerce')
+                    val = pd.to_numeric(last_row[sales_cols], errors='coerce')
                     if pd.notna(val):
                         total_business_sales = float(val)
-                        
-                if qty_cols:
-                    val_qty = pd.to_numeric(last_row[qty_cols[0]], errors='coerce')
-                    if pd.notna(val_qty):
-                        total_business_qty = float(val_qty)
-                    
-                # যদি কোনো কারণে শেষ রো-তে ভ্যালু না পাওয়া যায় (যেমন ফাঁকা লাইন), তবে তার আগেরটি চেক করবে
                 if total_business_sales == 0.0 and len(df_clean) > 1:
                     last_row = df_clean.iloc[-2]
                     if sales_cols:
-                        val = pd.to_numeric(last_row[sales_cols[0]], errors='coerce')
+                        val = pd.to_numeric(last_row[sales_cols], errors='coerce')
                         if pd.notna(val):
                             total_business_sales = float(val)
-                    if qty_cols:
-                        val_qty = pd.to_numeric(last_row[qty_cols[0]], errors='coerce')
-                        if pd.notna(val_qty):
-                            total_business_qty = float(val_qty)
 
-                # 📊 শুধুমাত্র SalesSummary শীটের ভেতরের ডেটা দিয়েই ব্রাঞ্চ চার্ট তৈরি হবে
                 branch_cols = [c for c in df_clean.columns if 'branch' in c or 'zone' in c or 'location' in c or 'state' in c]
                 if branch_cols and sales_cols:
-                    b_col = branch_cols[0]
-                    s_col = sales_cols[0]
+                    b_col = branch_cols
+                    s_col = sales_cols
                     for idx, row in df_clean.iterrows():
                         b_name = str(row[b_col]).upper().strip()
                         b_val = pd.to_numeric(row[s_col], errors='coerce')
                         if pd.notna(b_val) and b_name not in ['NAN', '', 'GRAND TOTAL', 'TOTAL']:
                             branch_summary_dict[b_name] = branch_summary_dict.get(b_name, 0) + b_val
 
-            # 📦 শুধুমাত্র 'SalesPDTSummary' শীট থেকে প্রোডাক্ট চার্টের ডেটা নেওয়া হবে
+            # 🎯 ২. 'DailySalesReport' শীটের শেষ লাইনের Qty কলাম থেকে কোয়ান্টিটি ভ্যালু নেওয়া হবে
+            if sheet.strip().lower() == "dailysalesreport" and not df_clean.empty:
+                last_row_qty = df_clean.iloc[-1]
+                if qty_cols:
+                    val_qty = pd.to_numeric(last_row_qty[qty_cols], errors='coerce')
+                    if pd.notna(val_qty):
+                        total_business_qty = float(val_qty)
+                if total_business_qty == 0.0 and len(df_clean) > 1:
+                    last_row_qty = df_clean.iloc[-2]
+                    if qty_cols:
+                        val_qty = pd.to_numeric(last_row_qty[qty_cols], errors='coerce')
+                        if pd.notna(val_qty):
+                            total_business_qty = float(val_qty)
+
+            # 📦 ৩. 'SalesPDTSummary' শীট থেকে প্রোডাক্ট চার্টের ডেটা নেওয়া হবে
             if sheet.strip().lower() == "salespdtsummary" and not df_clean.empty:
                 pdt_cols = [c for c in df_clean.columns if 'product' in c or 'item' in c or 'category' in c or 'fly' in c]
                 if pdt_cols and sales_cols:
-                    p_col = pdt_cols[0]
-                    s_col = sales_cols[0]
+                    p_col = pdt_cols
+                    s_col = sales_cols
                     for idx, row in df_clean.iterrows():
                         p_name = str(row[p_col]).strip()
                         p_val = pd.to_numeric(row[s_col], errors='coerce')
                         if pd.notna(p_val) and p_name not in ['nan', '', 'GRAND TOTAL', 'TOTAL']:
                             product_summary_dict[p_name] = product_summary_dict.get(p_name, 0) + p_val
 
-        # ডেক্সটপ সর্টিং এবং সাজানো
         branch_df = pd.DataFrame(list(branch_summary_dict.items()), columns=['Branch', 'Net Sales']).sort_values(by='Net Sales', ascending=False)
         product_df = pd.DataFrame(list(product_summary_dict.items()), columns=['Product Category', 'Total Value']).sort_values(by='Total Value', ascending=False)
         
@@ -102,14 +99,14 @@ if all_sheets_dict:
     
     if view_mode == "🏠 মেইন ড্যাসবোর্ড (Summary)":
         st.markdown(f"<h1 style='text-align: center; color: {PRIMARY_COLOR};'>Northwind Traders Monthly Performance</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center; font-size: 16px;'>SalesSummary শীটের মূল ডেটা রো এবং SalesPDTSummary শীটের ওপর ভিত্তি করে তৈরি সংক্ষিপ্ত রিপোর্ট</p>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; font-size: 16px;'>SalesSummary, DailySalesReport এবং SalesPDTSummary শীটের ডেটার ওপর ভিত্তি করে তৈরি রিপোর্ট</p>", unsafe_allow_html=True)
         st.markdown("---")
         
         col1, col2, col3 = st.columns(3)
         with col1:
             st.markdown(f"<div class='kpi-box'><h3 style='color: #1b5e20; margin:0;'>💰 Total Net Sales</h3><h2 style='color: #1b5e20; margin:10px 0;'>₹ {total_sales:,.2f}</h2><small>SalesSummary-এর শেষ লাইনের মূল Total ভ্যালু</small></div>", unsafe_allow_html=True)
         with col2:
-            st.markdown(f"<div class='kpi-box'><h3 style='color: #1b5e20; margin:0;'>📦 Total Quantity Sold</h3><h2 style='color: #1b5e20; margin:10px 0;'>{total_qty:,.0f} Pcs</h2><small>SalesSummary-এর শেষ লাইনের মূল Total কোয়ান্টিটি</small></div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='kpi-box'><h3 style='color: #1b5e20; margin:0;'>📦 Total Quantity Sold</h3><h2 style='color: #1b5e20; margin:10px 0;'>{total_qty:,.0f} Pcs</h2><small>DailySalesReport-এর শেষ লাইনের মূল Qty ভ্যালু</small></div>", unsafe_allow_html=True)
         with col3:
             st.markdown(f"<div class='kpi-box'><h3 style='color: #1b5e20; margin:0;'>📁 Total Active Sheets</h3><h2 style='color: #1b5e20; margin:10px 0;'>{len(sheet_names)} Sheets</h2><small>সফলভাবে সিঙ্ক হওয়া ডেটাসেট</small></div>", unsafe_allow_html=True)
             
@@ -139,7 +136,7 @@ if all_sheets_dict:
         
         excel_file = pd.ExcelFile("sales_data.xlsx")
         df_sheet = pd.read_excel(excel_file, sheet_name=selected_sheet, skiprows=1)
-        st.subheader(f"📋 টেবিল: {selected_sheet} (মোট ডেটা সারি: {len(df_sheet)})")
+        st.subheader(f"📋 টেব일: {selected_sheet} (মোট ডেটা সারি: {len(df_sheet)})")
         
         if len(df_sheet.columns) > 0:
             filter_column = st.selectbox("🎯 ফিল্টার করার জন্য একটি কলাম বেছে নিন:", options=df_sheet.columns)
