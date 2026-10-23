@@ -29,21 +29,26 @@ def load_and_process_dashboard_data():
             sales_cols = [c for c in df_clean.columns if 'sales' in c or 'value' in c or 'amount' in c]
             qty_cols = [c for c in df_clean.columns if 'qty' in c or 'quantity' in c or 'count' in c]
             
+            # ফিক্সড: প্রতিটি কলাম লুপের মাধ্যমে আলাদা করে হিসাব করা হচ্ছে
             if sheet.strip().lower() == "salessummary":
                 if sales_cols:
-                    total_business_sales = pd.to_numeric(df_clean[sales_cols], errors='coerce').sum()
+                    for col in sales_cols:
+                        total_business_sales += pd.to_numeric(df_clean[col], errors='coerce').sum()
                 if qty_cols:
-                    total_business_qty = pd.to_numeric(df_clean[qty_cols], errors='coerce').sum()
+                    for col in qty_cols:
+                        total_business_qty += pd.to_numeric(df_clean[col], errors='coerce').sum()
             elif total_business_sales == 0.0:
                 if sales_cols:
-                    total_business_sales = pd.to_numeric(df_clean[sales_cols], errors='coerce').sum()
+                    for col in sales_cols:
+                        total_business_sales += pd.to_numeric(df_clean[col], errors='coerce').sum()
                 if qty_cols:
-                    total_business_qty = pd.to_numeric(df_clean[qty_cols], errors='coerce').sum()
+                    for col in qty_cols:
+                        total_business_qty += pd.to_numeric(df_clean[col], errors='coerce').sum()
 
             branch_cols = [c for c in df_clean.columns if 'branch' in c or 'zone' in c or 'location' in c or 'state' in c]
             if branch_cols and sales_cols:
-                b_col = branch_cols
-                s_col = sales_cols
+                b_col = branch_cols[0]  # ১ম ম্যাচিং কলাম সিলেক্ট
+                s_col = sales_cols[0]   # ১ম ম্যাচিং কলাম সিলেক্ট
                 for idx, row in df_clean.iterrows():
                     b_name = str(row[b_col]).upper().strip()
                     b_val = pd.to_numeric(row[s_col], errors='coerce')
@@ -53,8 +58,8 @@ def load_and_process_dashboard_data():
             if sheet.strip().lower() == "salespdtsummary":
                 pdt_cols = [c for c in df_clean.columns if 'product' in c or 'item' in c or 'category' in c or 'fly' in c]
                 if pdt_cols and sales_cols:
-                    p_col = pdt_cols
-                    s_col = sales_cols
+                    p_col = pdt_cols[0]
+                    s_col = sales_cols[0]
                     for idx, row in df_clean.iterrows():
                         p_name = str(row[p_col]).strip()
                         p_val = pd.to_numeric(row[s_col], errors='coerce')
@@ -63,8 +68,8 @@ def load_and_process_dashboard_data():
             elif not product_summary_dict:
                 pdt_cols = [c for c in df_clean.columns if 'product' in c or 'item' in c or 'category' in c or 'fly' in c]
                 if pdt_cols and sales_cols:
-                    p_col = pdt_cols
-                    s_col = sales_cols
+                    p_col = pdt_cols[0]
+                    s_col = sales_cols[0]
                     for idx, row in df_clean.iterrows():
                         p_name = str(row[p_col]).strip()
                         p_val = pd.to_numeric(row[s_col], errors='coerce')
