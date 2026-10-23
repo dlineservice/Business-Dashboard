@@ -35,14 +35,15 @@ def load_and_process_dashboard_data():
             if sheet.strip().lower() == "salessummary" and not df_clean.empty:
                 last_row = df_clean.iloc[-1]
                 if sales_cols:
-                    val = pd.to_numeric(last_row[sales_cols].values, errors='coerce')
+                    # Using .iloc[0] to grab only the first matching column value as a scalar safely
+                    val = pd.to_numeric(last_row[sales_cols].iloc[0], errors='coerce')
                     if pd.notna(val):
                         total_business_sales = float(val)
                 
                 if total_business_sales == 0.0 and len(df_clean) > 1:
                     last_row = df_clean.iloc[-2]
                     if sales_cols:
-                        val = pd.to_numeric(last_row[sales_cols].values, errors='coerce')
+                        val = pd.to_numeric(last_row[sales_cols].iloc[0], errors='coerce')
                         if pd.notna(val):
                             total_business_sales = float(val)
 
@@ -61,14 +62,14 @@ def load_and_process_dashboard_data():
             if sheet.strip().lower() == "dailysalesreport" and not df_clean.empty:
                 last_row_qty = df_clean.iloc[-1]
                 if qty_cols:
-                    val_qty = pd.to_numeric(last_row_qty[qty_cols].values, errors='coerce')
+                    val_qty = pd.to_numeric(last_row_qty[qty_cols].iloc[0], errors='coerce')
                     if pd.notna(val_qty):
                         total_business_qty = float(val_qty)
                 
                 if total_business_qty == 0.0 and len(df_clean) > 1:
                     last_row_qty = df_clean.iloc[-2]
                     if qty_cols:
-                        val_qty = pd.to_numeric(last_row_qty[qty_cols].values, errors='coerce')
+                        val_qty = pd.to_numeric(last_row_qty[qty_cols].iloc[0], errors='coerce')
                         if pd.notna(val_qty):
                             total_business_qty = float(val_qty)
 
