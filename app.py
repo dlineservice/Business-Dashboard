@@ -15,10 +15,11 @@ def load_and_process_dashboard_data():
         excel_file = pd.ExcelFile("sales_data.xlsx")
         sheet_names = excel_file.sheet_names
         all_sheets_dict = {}
-        total_business_sales = 0.0
-        total_business_qty = 0
         
-        # ব্রাঞ্চ সামারির জন্য আলাদা ডিকশনারি
+        # একক সংখ্যা হিসেবে ভ্যালু শুরু করা
+        total_business_sales = 0.0
+        total_business_qty = 0.0
+        
         branch_summary_dict = {}
         product_summary_dict = {}
         
@@ -31,50 +32,58 @@ def load_and_process_dashboard_data():
             sales_cols = [c for c in df_clean.columns if 'sales' in c or 'value' in c or 'amount' in c]
             qty_cols = [c for c in df_clean.columns if 'qty' in c or 'quantity' in c or 'count' in c]
             
-            # 🎯 ১. শুধুমাত্র 'SalesSummary' শীট থেকে প্রধান KPI এবং ব্রাঞ্চ চার্টের ডেটা নেওয়া হবে
+            # 🎯 শুধুমাত্র 'SalesSummary' শীট থেকে প্রধান KPI এবং ব্রাঞ্চ চার্টের ডেটা নেওয়া হবে
             if sheet.strip().lower() == "salessummary" and not df_clean.empty:
                 # শেষ সারি (Total Row) থেকে প্রধান KPI ভ্যালু নেওয়া
                 last_row = df_clean.iloc[-1]
+                
                 if sales_cols:
-                    total_business_sales = pd.to_numeric(last_row[sales_cols], errors='coerce')
+                    # প্রথম কলামের ভ্যালুকে সংখ্যায় রূপান্তর করে যোগ করা (সিরিজের অবজেক্ট এড়াতে)
+                    val = pd.to_numeric(last_row[sales_cols[0]], errors='coerce')
+                    if pd.notna(val):
+                        total_business_sales = float(val)
+                        
                 if qty_cols:
-                    total_business_qty = pd.to_numeric(last_row[qty_cols], errors='coerce')
+                    val_qty = pd.to_numeric(last_row[qty_cols[0]], errors='coerce')
+                    if pd.notna(val_qty):
+                        total_business_qty = float(val_qty)
                     
-                if (pd.isna(total_business_sales) or total_business_sales == 0) and len(df_clean) > 1:
+                # যদি কোনো কারণে শেষ রো-তে ভ্যালু না পাওয়া যায় (যেমন ফাঁকা লাইন), তবে তার আগেরটি চেক করবে
+                if total_business_sales == 0.0 and len(df_clean) > 1:
                     last_row = df_clean.iloc[-2]
                     if sales_cols:
-                        total_business_sales = pd.to_numeric(last_row[sales_cols], errors='coerce')
+                        val = pd.to_numeric(last_row[sales_cols[0]], errors='coerce')
+                        if pd.notna(val):
+                            total_business_sales = float(val)
                     if qty_cols:
-                        total_business_qty = pd.to_numeric(last_row[qty_cols], errors='coerce')
+                        val_qty = pd.to_numeric(last_row[qty_cols[0]], errors='coerce')
+                        if pd.notna(val_qty):
+                            total_business_qty = float(val_qty)
 
-                # 📊 ফিক্সড: শুধুমাত্র SalesSummary শীটের ভেতরের ডেটা দিয়েই ব্রাঞ্চ চার্ট তৈরি হবে
+                # 📊 শুধুমাত্র SalesSummary শীটের ভেতরের ডেটা দিয়েই ব্রাঞ্চ চার্ট তৈরি হবে
                 branch_cols = [c for c in df_clean.columns if 'branch' in c or 'zone' in c or 'location' in c or 'state' in c]
                 if branch_cols and sales_cols:
-                    b_col = branch_cols
-                    s_col = sales_cols
+                    b_col = branch_cols[0]
+                    s_col = sales_cols[0]
                     for idx, row in df_clean.iterrows():
                         b_name = str(row[b_col]).upper().strip()
                         b_val = pd.to_numeric(row[s_col], errors='coerce')
-                        # টোটাল বা গ্র্যান্ড টোটাল রো বাদ দিয়ে প্রকৃত ব্রাঞ্চের ডেটা নেওয়া
                         if pd.notna(b_val) and b_name not in ['NAN', '', 'GRAND TOTAL', 'TOTAL']:
                             branch_summary_dict[b_name] = branch_summary_dict.get(b_name, 0) + b_val
 
-            # 📦 ২. প্রোডাক্ট ভিত্তিক ডেটা প্রসেস (SalesPDTSummary শীট থেকে)
-            if sheet.strip().lower() == "salespdtsummary":
+            # 📦 শুধুমাত্র 'SalesPDTSummary' শীট থেকে প্রোডাক্ট চার্টের ডেটা নেওয়া হবে
+            if sheet.strip().lower() == "salespdtsummary" and not df_clean.empty:
                 pdt_cols = [c for c in df_clean.columns if 'product' in c or 'item' in c or 'category' in c or 'fly' in c]
                 if pdt_cols and sales_cols:
-                    p_col = pdt_cols
-                    s_col = sales_cols
+                    p_col = pdt_cols[0]
+                    s_col = sales_cols[0]
                     for idx, row in df_clean.iterrows():
                         p_name = str(row[p_col]).strip()
                         p_val = pd.to_numeric(row[s_col], errors='coerce')
                         if pd.notna(p_val) and p_name not in ['nan', '', 'GRAND TOTAL', 'TOTAL']:
                             product_summary_dict[p_name] = product_summary_dict.get(p_name, 0) + p_val
 
-        total_business_sales = 0.0 if pd.isna(total_business_sales) else total_business_sales
-        total_business_qty = 0 if pd.isna(total_business_qty) else total_business_qty
-
-        # ডেক্সটপ সর্টিং
+        # ডেক্সটপ সর্টিং এবং সাজানো
         branch_df = pd.DataFrame(list(branch_summary_dict.items()), columns=['Branch', 'Net Sales']).sort_values(by='Net Sales', ascending=False)
         product_df = pd.DataFrame(list(product_summary_dict.items()), columns=['Product Category', 'Total Value']).sort_values(by='Total Value', ascending=False)
         
@@ -113,7 +122,7 @@ if all_sheets_dict:
                 fig_branch = px.bar(branch_df, x='Branch', y='Net Sales', text_auto='.2s', color_discrete_sequence=[PRIMARY_COLOR], template="plotly_white")
                 st.plotly_chart(fig_branch, use_container_width=True)
             else:
-                st.info("SalesSummary শীট থেকে ব্রাঞ্চ ভিত্তিক ডেটা প্রসেস করা সম্ভব হয়নি। কলামের নাম চেক করুন।")
+                st.info("SalesSummary শীট থেকে ব্রাঞ্চ ভিত্তিক ডেটা প্রসেস করা সম্ভব হয়নি।")
                 
         with chart_col2:
             st.markdown(f"<h3 style='color: {PRIMARY_COLOR};'>📦 PRODUCT ACTIVITY (Sales Share)</h3>", unsafe_allow_html=True)
