@@ -29,32 +29,37 @@ def load_and_process_dashboard_data():
             sales_cols = [c for c in df_clean.columns if 'sales' in c or 'value' in c or 'amount' in c]
             qty_cols = [c for c in df_clean.columns if 'qty' in c or 'quantity' in c or 'count' in c]
             
-            # ফিক্সড: প্রতিটি কলাম লুপের মাধ্যমে আলাদা করে হিসাব করা হচ্ছে
-            if sheet.strip().lower() == "salessummary":
+            # 🎯 ফিক্সড লজিক: শুধুমাত্র 'SalesSummary' শীটের শেষ লাইনের আসল Total রো থেকে ভ্যালু নেওয়া হচ্ছে
+            if sheet.strip().lower() == "salessummary" and not df_clean.empty:
+                # শেষ সারিটি খুঁজে বের করা
+                last_row = df_clean.iloc[-1]
+                
+                # যদি একাধিক সেলস বা কোয়ান্টিটি কলাম থাকে তবে প্রথমটি নেওয়া হবে
                 if sales_cols:
-                    for col in sales_cols:
-                        total_business_sales += pd.to_numeric(df_clean[col], errors='coerce').sum()
+                    total_business_sales = pd.to_numeric(last_row[sales_cols[0]], errors='coerce')
                 if qty_cols:
-                    for col in qty_cols:
-                        total_business_qty += pd.to_numeric(df_clean[col], errors='coerce').sum()
-            elif total_business_sales == 0.0:
-                if sales_cols:
-                    for col in sales_cols:
-                        total_business_sales += pd.to_numeric(df_clean[col], errors='coerce').sum()
-                if qty_cols:
-                    for col in qty_cols:
-                        total_business_qty += pd.to_numeric(df_clean[col], errors='coerce').sum()
+                    total_business_qty = pd.to_numeric(last_row[qty_cols[0]], errors='coerce')
+                    
+                # যদি কোনো কারণে শেষ রো-তে ভ্যালু না পাওয়া যায় (যেমন ফাঁকা লাইন), তবে তার আগেরটি চেক করবে
+                if (pd.isna(total_business_sales) or total_business_sales == 0) and len(df_clean) > 1:
+                    last_row = df_clean.iloc[-2]
+                    if sales_cols:
+                        total_business_sales = pd.to_numeric(last_row[sales_cols[0]], errors='coerce')
+                    if qty_cols:
+                        total_business_qty = pd.to_numeric(last_row[qty_cols[0]], errors='coerce')
 
+            # ব্রাঞ্চ ভিত্তিক ডেটা প্রসেস
             branch_cols = [c for c in df_clean.columns if 'branch' in c or 'zone' in c or 'location' in c or 'state' in c]
             if branch_cols and sales_cols:
-                b_col = branch_cols[0]  # ১ম ম্যাচিং কলাম সিলেক্ট
-                s_col = sales_cols[0]   # ১ম ম্যাচিং কলাম সিলেক্ট
+                b_col = branch_cols[0]
+                s_col = sales_cols[0]
                 for idx, row in df_clean.iterrows():
                     b_name = str(row[b_col]).upper().strip()
                     b_val = pd.to_numeric(row[s_col], errors='coerce')
                     if pd.notna(b_val) and b_name not in ['NAN', '', 'GRAND TOTAL', 'TOTAL']:
                         branch_summary_dict[b_name] = branch_summary_dict.get(b_name, 0) + b_val
 
+            # প্রোডাক্ট ভিত্তিক ডেটা প্রসেস
             if sheet.strip().lower() == "salespdtsummary":
                 pdt_cols = [c for c in df_clean.columns if 'product' in c or 'item' in c or 'category' in c or 'fly' in c]
                 if pdt_cols and sales_cols:
@@ -65,16 +70,10 @@ def load_and_process_dashboard_data():
                         p_val = pd.to_numeric(row[s_col], errors='coerce')
                         if pd.notna(p_val) and p_name not in ['nan', '', 'GRAND TOTAL', 'TOTAL']:
                             product_summary_dict[p_name] = product_summary_dict.get(p_name, 0) + p_val
-            elif not product_summary_dict:
-                pdt_cols = [c for c in df_clean.columns if 'product' in c or 'item' in c or 'category' in c or 'fly' in c]
-                if pdt_cols and sales_cols:
-                    p_col = pdt_cols[0]
-                    s_col = sales_cols[0]
-                    for idx, row in df_clean.iterrows():
-                        p_name = str(row[p_col]).strip()
-                        p_val = pd.to_numeric(row[s_col], errors='coerce')
-                        if pd.notna(p_val) and p_name not in ['nan', '', 'GRAND TOTAL', 'TOTAL']:
-                            product_summary_dict[p_name] = product_summary_dict.get(p_name, 0) + p_val
+
+        # নাল ভ্যালু হ্যান্ডেল করা
+        total_business_sales = 0.0 if pd.isna(total_business_sales) else total_business_sales
+        total_business_qty = 0 if pd.isna(total_business_qty) else total_business_qty
 
         branch_df = pd.DataFrame(list(branch_summary_dict.items()), columns=['Branch', 'Net Sales']).sort_values(by='Net Sales', ascending=False)
         product_df = pd.DataFrame(list(product_summary_dict.items()), columns=['Product Category', 'Total Value']).sort_values(by='Total Value', ascending=False)
@@ -93,14 +92,14 @@ if all_sheets_dict:
     
     if view_mode == "🏠 মেইন ড্যাসবোর্ড (Summary)":
         st.markdown(f"<h1 style='text-align: center; color: {PRIMARY_COLOR};'>Northwind Traders Monthly Performance</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center; font-size: 16px;'>SalesSummary এবং SalesPDTSummary শীটের ওপর ভিত্তি করে তৈরি সংক্ষিপ্ত রিপোর্ট</p>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; font-size: 16px;'>SalesSummary শীটের মূল Total রো এবং SalesPDTSummary শীটের ওপর ভিত্তি করে তৈরি সংক্ষিপ্ত রিপোর্ট</p>", unsafe_allow_html=True)
         st.markdown("---")
         
         col1, col2, col3 = st.columns(3)
         with col1:
-            st.markdown(f"<div class='kpi-box'><h3 style='color: #1b5e20; margin:0;'>💰 Total Net Sales</h3><h2 style='color: #1b5e20; margin:10px 0;'>₹ {total_sales:,.2f}</h2><small>SalesSummary থেকে প্রাপ্ত ভ্যালু</small></div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='kpi-box'><h3 style='color: #1b5e20; margin:0;'>💰 Total Net Sales</h3><h2 style='color: #1b5e20; margin:10px 0;'>₹ {total_sales:,.2f}</h2><small>SalesSummary-এর শেষ লাইনের মূল Total ভ্যালু</small></div>", unsafe_allow_html=True)
         with col2:
-            st.markdown(f"<div class='kpi-box'><h3 style='color: #1b5e20; margin:0;'>📦 Total Quantity Sold</h3><h2 style='color: #1b5e20; margin:10px 0;'>{total_qty:,.0f} Pcs</h2><small>SalesSummary থেকে প্রাপ্ত মোট কোয়ান্টিটি</small></div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='kpi-box'><h3 style='color: #1b5e20; margin:0;'>📦 Total Quantity Sold</h3><h2 style='color: #1b5e20; margin:10px 0;'>{total_qty:,.0f} Pcs</h2><small>SalesSummary-এর শেষ লাইনের মূল Total কোয়ান্টিটি</small></div>", unsafe_allow_html=True)
         with col3:
             st.markdown(f"<div class='kpi-box'><h3 style='color: #1b5e20; margin:0;'>📁 Total Active Sheets</h3><h2 style='color: #1b5e20; margin:10px 0;'>{len(sheet_names)} Sheets</h2><small>সফলভাবে সিঙ্ক হওয়া ডেটাসেট</small></div>", unsafe_allow_html=True)
             
