@@ -18,24 +18,26 @@ def load_and_process_dashboard_data():
         
         total_business_sales = 0.0
         total_business_qty = 0.0
+        total_overdue_amount = 0.0
         
         branch_summary_dict = {}
         product_summary_dict = {}
         
         for sheet in sheet_names:
+            # ডিফল্টভাবে ১ম রো বাদ দিয়ে রিড করা হচ্ছে
             df = pd.read_excel(excel_file, sheet_name=sheet, skiprows=1)
             all_sheets_dict[sheet] = df
+            
             df_clean = df.copy()
             df_clean.columns = [str(col).strip().lower() for col in df_clean.columns]
             
             sales_cols = [c for c in df_clean.columns if 'sales' in c or 'value' in c or 'amount' in c]
             qty_cols = [c for c in df_clean.columns if 'qty' in c or 'quantity' in c or 'count' in c]
             
-            # 🎯 1. Fetching Sales and Branch chart data exclusively from 'SalesSummary'
+            # 🎯 ১. 'SalesSummary' শীট থেকে প্রধান Sales এবং ব্রাঞ্চ চার্টের ডেটা নেওয়া
             if sheet.strip().lower() == "salessummary" and not df_clean.empty:
                 last_row = df_clean.iloc[-1]
                 if sales_cols:
-                    # Using .iloc[0] to grab only the first matching column value as a scalar safely
                     val = pd.to_numeric(last_row[sales_cols].iloc[0], errors='coerce')
                     if pd.notna(val):
                         total_business_sales = float(val)
@@ -47,7 +49,6 @@ def load_and_process_dashboard_data():
                         if pd.notna(val):
                             total_business_sales = float(val)
 
-                # Processing branch chart data (Only from SalesSummary)
                 branch_cols = [c for c in df_clean.columns if 'branch' in c or 'zone' in c or 'location' in c or 'state' in c]
                 if branch_cols and sales_cols:
                     b_col = branch_cols[0]
@@ -58,7 +59,7 @@ def load_and_process_dashboard_data():
                         if pd.notna(b_val) and b_name not in ['NAN', '', 'GRAND TOTAL', 'TOTAL']:
                             branch_summary_dict[b_name] = branch_summary_dict.get(b_name, 0) + b_val
 
-            # 🎯 2. Fetching Quantity data exclusively from 'DailySalesReport' end row
+            # 🎯 ২. 'DailySalesReport' শীটের শেষ লাইন থেকে Qty নেওয়া
             if sheet.strip().lower() == "dailysalesreport" and not df_clean.empty:
                 last_row_qty = df_clean.iloc[-1]
                 if qty_cols:
@@ -73,7 +74,19 @@ def load_and_process_dashboard_data():
                         if pd.notna(val_qty):
                             total_business_qty = float(val_qty)
 
-            # 📦 3. Fetching Product chart data exclusively from 'SalesPDTSummary'
+            # 🎯 ৩. 'AgingSummary_Operating Branch' শীটের J30 সেল থেকে Overdue Amount নেওয়া
+            # যেহেতু skiprows=1 দেওয়া আছে, তাই এক্সেলের J30 সেলটি পাইথনের df-এ ২৮ নম্বর সারিতে (index 28) থাকবে
+            # আর J কলামটি হলো ১০ নম্বর কলাম (index 9)
+            if sheet.strip().replace(" ", "").lower() == "agingsummary_operatingbranch":
+                try:
+                    raw_df = pd.read_excel(excel_file, sheet_name=sheet, header=None)
+                    # এক্সেলের ৩২তম রো (row index 29) এবং J কলাম (column index 9) সরাসরি রিড করা হচ্ছে নিরাপত্তার জন্য
+                    overdue_val = raw_df.iloc[29, 9] 
+                    total_overdue_amount = float(pd.to_numeric(overdue_val, errors='coerce'))
+                except:
+                    total_overdue_amount = 0.0
+
+            # 📦 ৪. 'SalesPDTSummary' শীট থেকে প্রোডাক্ট চার্টের ডেটা নেওয়া
             if sheet.strip().lower() == "salespdtsummary" and not df_clean.empty:
                 pdt_cols = [c for c in df_clean.columns if 'product' in c or 'item' in c or 'category' in c or 'fly' in c]
                 if pdt_cols and sales_cols:
@@ -85,25 +98,28 @@ def load_and_process_dashboard_data():
                         if pd.notna(p_val) and p_name not in ['nan', '', 'GRAND TOTAL', 'TOTAL']:
                             product_summary_dict[p_name] = product_summary_dict.get(p_name, 0) + p_val
 
+        if pd.isna(total_overdue_amount):
+            total_overdue_amount = 0.0
+
         branch_df = pd.DataFrame(list(branch_summary_dict.items()), columns=['Branch', 'Net Sales']).sort_values(by='Net Sales', ascending=False)
         product_df = pd.DataFrame(list(product_summary_dict.items()), columns=['Product Category', 'Total Value']).sort_values(by='Total Value', ascending=False)
         
-        return all_sheets_dict, sheet_names, total_business_sales, total_business_qty, branch_df, product_df
+        return all_sheets_dict, sheet_names, total_business_sales, total_business_qty, total_overdue_amount, branch_df, product_df
     except Exception as e:
         st.error(f"Error processing excel file: {e}")
-        return None, [], 0, 0, pd.DataFrame(), pd.DataFrame()
+        return None, [], 0, 0, 0, pd.DataFrame(), pd.DataFrame()
 
-all_sheets_dict, sheet_names, total_sales, total_qty, branch_df, product_df = load_and_process_dashboard_data()
+all_sheets_dict, sheet_names, total_sales, total_qty, total_overdue, branch_df, product_df = load_and_process_dashboard_data()
 
 if all_sheets_dict:
     st.sidebar.title("🟢 Executive Control Panel")
     st.sidebar.markdown("---")
-    view_mode = st.sidebar.radio("Select View Mode:", ["🏠 Main Dashboard (Summary)", "📂 Detailed Sheet View (All 14 Sheets)"])
+    view_mode = st.sidebar.radio("Select View Mode:", ["🏠 Main Dashboard (Summary)", "📂 Detailed Sheet View (All Sheets)"])
     st.sidebar.markdown("---")
     
     if view_mode == "🏠 Main Dashboard (Summary)":
-        st.markdown(f"<h1 style='text-align: center; color: {PRIMARY_COLOR};'>FRONTECH Monthly Performance</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center; font-size: 16px;'>Executive summary compiled from SalesSummary, DailySalesReport, and SalesPDTSummary</p>", unsafe_allow_html=True)
+        st.markdown(f"<h1 style='text-align: center; color: {PRIMARY_COLOR};'>Northwind Traders Monthly Performance</h1>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; font-size: 16px;'>Executive summary compiled from SalesSummary, DailySalesReport, and AgingSummary</p>", unsafe_allow_html=True)
         st.markdown("---")
         
         col1, col2, col3 = st.columns(3)
@@ -112,7 +128,7 @@ if all_sheets_dict:
         with col2:
             st.markdown(f"<div class='kpi-box'><h3 style='color: #1b5e20; margin:0;'>📦 Total Quantity Sold</h3><h2 style='color: #1b5e20; margin:10px 0;'>{total_qty:,.0f} Pcs</h2><small>Actual Qty from DailySalesReport</small></div>", unsafe_allow_html=True)
         with col3:
-            st.markdown(f"<div class='kpi-box'><h3 style='color: #1b5e20; margin:0;'>📁 Total Active Sheets</h3><h2 style='color: #1b5e20; margin:10px 0;'>{len(sheet_names)} Sheets</h2><small>Successfully Synced Datasets</small></div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='kpi-box'><h3 style='color: #1b5e20; margin:0;'>⚠️ Total Overdue Amount</h3><h2 style='color: #1b5e20; margin:10px 0;'>₹ {total_overdue:,.2f}</h2><small>From AgingSummary_Operating Branch (J30)</small></div>", unsafe_allow_html=True)
             
         st.markdown("---")
         chart_col1, chart_col2 = st.columns(2)
@@ -133,7 +149,7 @@ if all_sheets_dict:
             else:
                 st.info("Unable to process product data from SalesPDTSummary.")
 
-    elif view_mode == "📂 Detailed Sheet View (All 14 Sheets)":
+    elif view_mode == "📂 Detailed Sheet View (All Sheets)":
         st.title("📂 Individual Sheet Analysis & Filtering")
         selected_sheet = st.selectbox("📁 Select a sheet to analyze:", options=sheet_names)
         st.markdown("---")
