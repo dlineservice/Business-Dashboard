@@ -4,7 +4,7 @@ import streamlit as st
 
 st.set_page_config(page_title="Executive Dashboard", layout="wide")
 C1, C2 = "#2E7D32", "#C8E6C9"
-st.markdown(f"<style>.kpi-box {{background-color: {C2}; padding: 20px; border-radius: 10px; border-left: 5px solid {C1}; text-align: center; margin-bottom: 10px;}} *, *:focus, *:focus-within, *:active, div:focus, span:focus, button:focus {{outline: none !important; outline-width: 0 !important; box-shadow: none !important; border-style: none inside !important;}} div[data-baseweb='tag'], span[data-baseweb='tag'], [class*='stMultiSelect'] span, div[class*='stMultiSelect'] div span {{background-color: {C2} !important; color: #1b5e20 !important; border: 1px solid {C1} !important; box-shadow: none !important; outline: none !important;}} div[data-baseweb='tag'] button svg, span[data-baseweb='tag'] button svg, [class*='stMultiSelect'] span button svg {{fill: #1b5e20 !important;}} div[data-baseweb='select'] div, [class*='stSelectbox'] div, [class*='stMultiSelect'] div {{border-color: {C1} !important;}} div[role='button'][tabindex='0'] svg, svg[class*='baseweb-icon'] {{fill: {C1} !important;}}</style>", unsafe_allow_html=True)
+st.markdown(f"<style>.kpi-box {{background-color: {C2}; padding: 20px; border-radius: 10px; border-left: 5px solid {C1}; text-align: center; margin-bottom: 10px;}} *, *:focus, *:focus-within, *:active, div, span, button {{outline: none !important; outline-width: 0 !important; box-shadow: none !important; border: none !important;}} div[data-baseweb='tag'], span[data-baseweb='tag'], [class*='stMultiSelect'] span, div[class*='stMultiSelect'] div span, [class*='stMultiSelect'] div, div[role='button'] {{background-color: {C2} !important; color: #1b5e20 !important; border: 1px solid {C1} !important; outline: none !important; box-shadow: none !important;}} div[data-baseweb='tag'] button svg, span[data-baseweb='tag'] button svg, [class*='stMultiSelect'] span button svg {{fill: #1b5e20 !important;}} div[data-baseweb='select'] div, [class*='stSelectbox'] div, [class*='stMultiSelect'] div {{border: 1px solid {C1} !important;}} div[role='button'][tabindex='0'] svg, svg[class*='baseweb-icon'] {{fill: {C1} !important;}}</style>", unsafe_allow_html=True)
 
 @st.cache_data
 def load_and_process_dashboard_data():
@@ -24,28 +24,28 @@ def load_and_process_dashboard_data():
             if s.strip().lower() == "salessummary":
                 r = df_c.iloc[-1]
                 if sc:
-                    v = pd.to_numeric(r[sc].iloc[0] if hasattr(r[sc], "iloc") else r[sc], errors='coerce')
+                    v = pd.to_numeric(r[sc].iloc if hasattr(r[sc], "iloc") else r[sc], errors='coerce')
                     if pd.notna(v): ts = float(v)
                 if ts == 0.0 and len(df_c) > 1:
                     r = df_c.iloc[-2]
                     if sc:
-                        v = pd.to_numeric(r[sc].iloc[0] if hasattr(r[sc], "iloc") else r[sc], errors='coerce')
+                        v = pd.to_numeric(r[sc].iloc if hasattr(r[sc], "iloc") else r[sc], errors='coerce')
                         if pd.notna(v): ts = float(v)
                 bc = [c for c in df_c.columns if 'branch' in c or 'zone' in c or 'location' in c or 'state' in c]
                 if bc and sc:
-                    for i, row in df_clean.iterrows() if 'df_clean' in locals() else df_c.iterrows():
-                        n = str(row[bc[0]]).upper().strip()
-                        v = pd.to_numeric(row[sc[0]], errors='coerce')
+                    for i, row in df_c.iterrows():
+                        n = str(row[bc]).upper().strip()
+                        v = pd.to_numeric(row[sc], errors='coerce')
                         if pd.notna(v) and n not in ['NAN', '', 'GRAND TOTAL', 'TOTAL']: br[n] = br.get(n, 0.0) + float(v)
             if s.strip().lower() == "dailysalesreport":
                 r = df_c.iloc[-1]
                 if qc:
-                    v = pd.to_numeric(r[qc].iloc[0] if hasattr(r[qc], "iloc") else r[qc], errors='coerce')
+                    v = pd.to_numeric(r[qc].iloc if hasattr(r[qc], "iloc") else r[qc], errors='coerce')
                     if pd.notna(v): tq = float(v)
                 if tq == 0.0 and len(df_c) > 1:
                     r = df_c.iloc[-2]
                     if qc:
-                        v = pd.to_numeric(r[qc].iloc[0] if hasattr(r[qc], "iloc") else r[qc], errors='coerce')
+                        v = pd.to_numeric(r[qc].iloc if hasattr(r[qc], "iloc") else r[qc], errors='coerce')
                         if pd.notna(v): tq = float(v)
             if s.strip().replace(" ", "").lower() == "agingsummary_operatingbranch":
                 try:
@@ -56,8 +56,8 @@ def load_and_process_dashboard_data():
                 pc = [c for c in df_c.columns if 'product' in c or 'item' in c or 'category' in c or 'fly' in c]
                 if pc and sc:
                     for i, row in df_c.iterrows():
-                        n = str(row[pc[0]]).strip()
-                        v = pd.to_numeric(row[sc[0]], errors='coerce')
+                        n = str(row[pc]).strip()
+                        v = pd.to_numeric(row[sc], errors='coerce')
                         if pd.notna(v) and n not in ['nan', '', 'GRAND TOTAL', 'TOTAL']: pr[n] = pr.get(n, 0.0) + float(v)
         b_df = pd.DataFrame(list(br.items()), columns=['Branch', 'Net Sales']).sort_values(by='Net Sales', ascending=False)
         p_df = pd.DataFrame(list(pr.items()), columns=['Product Category', 'Total Value']).sort_values(by='Total Value', ascending=False)
