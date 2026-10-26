@@ -168,8 +168,8 @@ if all_sheets:
                 
                 f_df = aging_df[
                     (aging_df['Branch'].isin(sel_branches)) & 
-                    (aging_df['AgeDays'] >= sel_days) & 
-                    (aging_df['AgeDays'] <= sel_days)
+                    (aging_df['AgeDays'] >= sel_days[0]) & 
+                    (aging_df['AgeDays'] <= sel_days[1])
                 ]
                 if categories and sel_categories:
                     f_df = f_df[f_df['PDT Fly'].isin(sel_categories)]
