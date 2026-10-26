@@ -16,30 +16,30 @@ def load_and_process_dashboard_data():
             df_c = df.copy(); df_c.columns = [str(c).strip().lower() for c in df_c.columns]
             sc = [c for c in df_c.columns if any(k in c for k in ['sales', 'value', 'amount'])]
             qc = [c for c in df_c.columns if any(k in c for k in ['qty', 'quantity', 'count'])]
-            if s.strip().lower() == "salessummary":
-                r = df_c.iloc[-1]
-                if sc and pd.notna(r[sc].iloc[0] if hasattr(r[sc], 'iloc') else r[sc]): ts = float(r[sc].iloc[0] if hasattr(r[sc], 'iloc') else r[sc])
+            
+            if s.strip().lower() == "salessummary" and sc:
+                r = df_c.iloc[-1]; v = r[sc].values[0] if hasattr(r[sc], 'values') else r[sc]
+                if pd.notna(v): ts = float(v)
                 bc = [c for c in df_c.columns if any(k in c for k in ['branch', 'zone', 'location', 'state'])]
-                if bc and sc:
+                if bc:
                     for _, row in df_c.iterrows():
                         n = str(row[bc[0]]).upper().strip()
-                        v = pd.to_numeric(row[sc[0]], errors='coerce')
-                        if pd.notna(v) and n not in ['NAN', '', 'GRAND TOTAL', 'TOTAL']: br[n] = br.get(n, 0.0) + float(v)
+                        v_br = pd.to_numeric(row[sc[0]], errors='coerce')
+                        if pd.notna(v_br) and n not in ['NAN', '', 'GRAND TOTAL', 'TOTAL']: br[n] = br.get(n, 0.0) + float(v_br)
             if s.strip().lower() == "dailysalesreport" and qc:
-                r = df_c.iloc[-1]
-                tq = float(pd.to_numeric(r[qc[0]], errors='coerce')) if pd.notna(pd.to_numeric(r[qc[0]], errors='coerce')) else 0.0
+                r = df_c.iloc[-1]; v = r[qc].values[0] if hasattr(r[qc], 'values') else r[qc]
+                if pd.notna(v): tq = float(v)
             if s.strip().replace(" ", "").lower() == "agingsummary_operatingbranch":
                 try:
                     rdf = pd.read_excel(xl, sheet_name=s, header=None)
                     if rdf.shape[0] >= 30 and rdf.shape[1] >= 10: ov = float(pd.to_numeric(rdf.iloc[29, 9], errors='coerce'))
                 except: ov = 0.0
-            if s.strip().lower() == "salespdtsummary":
-                pc = [c for c in df_c.columns if any(k in c for k in ['product', 'item', 'category', 'fly'])]
-                if pc and sc:
+            if s.strip().lower() == "salespdtsummary" and pc:= [c for c in df_c.columns if any(k in c for k in ['product', 'item', 'category', 'fly'])]:
+                if sc:
                     for _, row in df_c.iterrows():
                         n = str(row[pc[0]]).strip()
-                        v = pd.to_numeric(row[sc[0]], errors='coerce')
-                        if pd.notna(v) and n not in ['nan', '', 'GRAND TOTAL', 'TOTAL']: pr[n] = pr.get(n, 0.0) + float(v)
+                        v_p = pd.to_numeric(row[sc[0]], errors='coerce')
+                        if pd.notna(v_p) and n not in ['nan', '', 'GRAND TOTAL', 'TOTAL']: pr[n] = pr.get(n, 0.0) + float(v_p)
         b_df = pd.DataFrame(list(br.items()), columns=['Branch', 'Net Sales']).sort_values(by='Net Sales', ascending=False)
         p_df = pd.DataFrame(list(pr.items()), columns=['Product Category', 'Total Value']).sort_values(by='Total Value', ascending=False)
         return sd, sn, ts, tq, (0.0 if pd.isna(ov) else ov), b_df, p_df
