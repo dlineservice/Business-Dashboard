@@ -74,7 +74,7 @@ if all_sheets:
         if not product_df.empty: g2.plotly_chart(px.pie(product_df.head(10), names='Product Category', values='Total Value', hole=0.3, color_discrete_sequence=px.colors.sequential.Greens_r), use_container_width=True)
         
         st.markdown("<hr>", unsafe_allow_html=True)
-        st.markdown(f"<h2 style='text-align: center; color: {C1};'>Stock Aging Summary (Pivot Table)</h2>", unsafe_allow_html=True)
+        st.markdown(f"<h2 style='text-align: center; color: {C1};'>Stock Aging Summary </h2>", unsafe_allow_html=True)
         
         if "StockAgingSummary" in all_sheets:
             aging_df = all_sheets["StockAgingSummary"].copy()
