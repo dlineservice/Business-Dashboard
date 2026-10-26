@@ -19,18 +19,21 @@ def load_and_process_dashboard_data():
             
             if s.strip().lower() == "salessummary" and sc:
                 r = df_c.iloc[-1]
-                v_series = pd.to_numeric(r[sc[0]], errors='coerce')
-                if pd.notna(v_series): ts = float(v_series)
+                v_series = pd.to_numeric(r[sc], errors='coerce')
+                v = v_series.iloc[0] if hasattr(v_series, 'iloc') else v_series
+                if pd.notna(v): ts = float(v)
                 bc = [c for c in df_c.columns if any(k in c for k in ['branch', 'zone', 'location', 'state'])]
                 if bc:
                     for _, row in df_c.iterrows():
-                        n = str(row[bc[0]]).upper().strip()
-                        v_br = pd.to_numeric(row[sc[0]], errors='coerce')
-                        if pd.notna(v_br) and n not in ['NAN', '', 'GRAND TOTAL', 'TOTAL']: br[n] = br.get(n, 0.0) + float(v_br)
+                        n = str(row[bc].iloc[0] if hasattr(row[bc], 'iloc') else row[bc]).upper().strip()
+                        v_br = pd.to_numeric(row[sc], errors='coerce')
+                        v_br_val = v_br.iloc[0] if hasattr(v_br, 'iloc') else v_br
+                        if pd.notna(v_br_val) and n not in ['NAN', '', 'GRAND TOTAL', 'TOTAL']: br[n] = br.get(n, 0.0) + float(v_br_val)
             if s.strip().lower() == "dailysalesreport" and qc:
                 r = df_c.iloc[-1]
-                v_series = pd.to_numeric(r[qc[0]], errors='coerce')
-                if pd.notna(v_series): tq = float(v_series)
+                v_series = pd.to_numeric(r[qc], errors='coerce')
+                v = v_series.iloc[0] if hasattr(v_series, 'iloc') else v_series
+                if pd.notna(v): tq = float(v)
             if s.strip().replace(" ", "").lower() == "agingsummary_operatingbranch":
                 try:
                     rdf = pd.read_excel(xl, sheet_name=s, header=None)
@@ -43,9 +46,10 @@ def load_and_process_dashboard_data():
                 pc = [c for c in df_c.columns if any(k in c for k in ['product', 'item', 'category', 'fly'])]
                 if pc and sc:
                     for _, row in df_c.iterrows():
-                        n = str(row[pc[0]]).strip()
-                        v_p = pd.to_numeric(row[sc[0]], errors='coerce')
-                        if pd.notna(v_p) and n not in ['nan', '', 'GRAND TOTAL', 'TOTAL']: pr[n] = pr.get(n, 0.0) + float(v_p)
+                        n = str(row[pc].iloc[0] if hasattr(row[pc], 'iloc') else row[pc]).strip()
+                        v_p = pd.to_numeric(row[sc], errors='coerce')
+                        v_p_val = v_p.iloc[0] if hasattr(v_p, 'iloc') else v_p
+                        if pd.notna(v_p_val) and n not in ['nan', '', 'GRAND TOTAL', 'TOTAL']: pr[n] = pr.get(n, 0.0) + float(v_p_val)
         b_df = pd.DataFrame(list(br.items()), columns=['Branch', 'Net Sales']).sort_values(by='Net Sales', ascending=False)
         p_df = pd.DataFrame(list(pr.items()), columns=['Product Category', 'Total Value']).sort_values(by='Total Value', ascending=False)
         return sd, sn, ts, tq, (0.0 if pd.isna(ov) else ov), b_df, p_df
@@ -69,24 +73,37 @@ if all_sheets:
         
         st.markdown("<hr>", unsafe_allow_html=True)
         st.markdown(f"<h2 style='text-align: center; color: {C1};'>Stock Aging Summary (Pivot Table)</h2>", unsafe_allow_html=True)
+        
         if "StockAgingSummary" in all_sheets:
-            raw_aging = all_sheets["StockAgingSummary"]; header_row = 0
-            for idx, row in raw_aging.iterrows():
-                if 'branch' in [str(x).strip().lower() for x in row.values]: header_row = idx + 1; break
-            aging_df = pd.read_excel("sales_data.xlsx", sheet_name="StockAgingSummary", skiprows=header_row)
+            # ২য় রো থেকে সরাসরি ডেটাফ্রেম নেওয়া (যা ফাংশনে skiprows=1 দিয়ে অলরেডি লোড করা আছে)
+            aging_df = all_sheets["StockAgingSummary"].copy()
             aging_df.columns = [str(c).strip() for c in aging_df.columns]
+            
+            # কলামের নামের কেস বা স্পেস ম্যাচিং সহজ করার জন্য রিনেম ম্যাপিং
+            rename_map = {}
+            for c in aging_df.columns:
+                if 'branch' in str(c).lower(): rename_map[c] = 'Branch'
+                elif 'qty' in str(c).lower() or 'quantity' in str(c).lower(): rename_map[c] = 'Qty'
+                elif 'amount' in str(c).lower() or 'value' in str(c).lower(): rename_map[c] = 'Amount'
+                elif 'age' in str(c).lower(): rename_map[c] = 'AgeDays'
+                elif 'pdt' in str(c).lower() or 'fly' in str(c).lower(): rename_map[c] = 'PDT Fly'
+            aging_df = aging_df.rename(columns=rename_map)
+            
             if 'Branch' in aging_df.columns:
-                aging_df = aging_df[aging_df['Branch'].notna() & (~aging_df['Branch'].str.contains('Total|GRAND', case=False, na=False))]
-                for c in ['Qty', 'Amount', 'AgeDays']: 
+                aging_df = aging_df[aging_df['Branch'].notna() & (~aging_df['Branch'].astype(str).str.contains('Total|GRAND', case=False, na=False))]
+                for c in ['Qty', 'Amount', 'AgeDays']:
                     if c in aging_df.columns: aging_df[c] = pd.to_numeric(aging_df[c], errors='coerce').fillna(0)
+                
                 f1, f2, f3 = st.columns(3)
                 sel_branches = f1.multiselect("Filter Branch:", options=sorted(aging_df['Branch'].unique()), default=sorted(aging_df['Branch'].unique()))
                 categories = sorted(aging_df['PDT Fly'].dropna().unique()) if 'PDT Fly' in aging_df.columns else []
                 sel_categories = f2.multiselect("Filter PDT Fly:", options=categories, default=categories) if categories else []
                 max_days = int(aging_df['AgeDays'].max()) if 'AgeDays' in aging_df.columns and not aging_df.empty else 365
                 sel_days = f3.slider("Filter AgeDays Range:", min_value=0, max_value=max_days, value=(0, max_days))
+                
                 f_df = aging_df[(aging_df['Branch'].isin(sel_branches)) & (aging_df['AgeDays'] >= sel_days) & (aging_df['AgeDays'] <= sel_days)]
                 if categories and sel_categories: f_df = f_df[f_df['PDT Fly'].isin(sel_categories)]
+                
                 if not f_df.empty:
                     p_index = ['Branch']
                     if 'PDT Fly' in f_df.columns: p_index.append('PDT Fly')
@@ -94,7 +111,7 @@ if all_sheets:
                     st.dataframe(pivot_res, use_container_width=True)
                     st.download_button(label="Download Filtered CSV", data=f_df.to_csv(index=False).encode("utf-8"), file_name="StockAging_Filtered.csv", mime="text/csv")
                 else: st.warning("No data found matching the selected filters.")
-            else: st.error("Column 'Branch' not found in StockAgingSummary sheet.")
+            else: st.error("Column 'Branch' not found in StockAgingSummary sheet columns.")
         else: st.error("Sheet 'StockAgingSummary' not found in excel file.")
     else:
         st.title("Sheet View")
