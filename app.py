@@ -39,8 +39,7 @@ def load_and_process_dashboard_data():
                 try:
                     rdf = pd.read_excel(xl, sheet_name=s, header=None)
                     if rdf.shape[0] >= 30 and rdf.shape[1] >= 10:
-                        v_raw = rdf.iloc[29, 9]
-                        v_num = pd.to_numeric(v_raw, errors='coerce')
+                        v_num = pd.to_numeric(rdf.iloc[29, 9], errors='coerce')
                         if pd.notna(v_num): ov = float(v_num)
                 except: ov = 0.0
             if s.strip().lower() == "salespdtsummary":
@@ -69,12 +68,27 @@ if all_sheets:
         col1.markdown(f"<div class='kpi-box'><h3>Total Sales</h3><h2>₹ {total_sales:,.2f}</h2></div>", unsafe_allow_html=True)
         col2.markdown(f"<div class='kpi-box'><h3>Total Qty</h3><h2>{total_qty:,.0f} Pcs</h2></div>", unsafe_allow_html=True)
         col3.markdown(f"<div class='kpi-box'><h3>Overdue Amount</h3><h2>₹ {total_overdue:,.2f}</h2></div>", unsafe_allow_html=True)
+        
+        # চার্ট তৈরিতে ডাইনামিক হেডিং (title) যুক্ত করা হয়েছে
         g1, g2 = st.columns(2)
-        if not branch_df.empty: g1.plotly_chart(px.bar(branch_df, x='Branch', y='Net Sales', text_auto='.2s', color_discrete_sequence=[C1], template="plotly_white"), use_container_width=True)
-        if not product_df.empty: g2.plotly_chart(px.pie(product_df.head(10), names='Product Category', values='Total Value', hole=0.3, color_discrete_sequence=px.colors.sequential.Greens_r), use_container_width=True)
+        if not branch_df.empty: 
+            fig_bar = px.bar(
+                branch_df, x='Branch', y='Net Sales', text_auto='.2s', 
+                color_discrete_sequence=[C1], template="plotly_white",
+                title="<b>Net Sales by Branch</b>"
+            )
+            g1.plotly_chart(fig_bar, use_container_width=True)
+            
+        if not product_df.empty: 
+            fig_pie = px.pie(
+                product_df.head(10), names='Product Category', values='Total Value', hole=0.3, 
+                color_discrete_sequence=px.colors.sequential.Greens_r,
+                title="<b>Sales Share by Product Category (Top 10)</b>"
+            )
+            g2.plotly_chart(fig_pie, use_container_width=True)
         
         st.markdown("<hr>", unsafe_allow_html=True)
-        st.markdown(f"<h2 style='text-align: center; color: {C1};'>Stock Aging Summary </h2>", unsafe_allow_html=True)
+        st.markdown(f"<h2 style='text-align: center; color: {C1};'>Stock Aging Summary (Pivot Table)</h2>", unsafe_allow_html=True)
         
         if "StockAgingSummary" in all_sheets:
             aging_df = all_sheets["StockAgingSummary"].copy()
