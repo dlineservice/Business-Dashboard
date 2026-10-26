@@ -75,11 +75,9 @@ if all_sheets:
         st.markdown(f"<h2 style='text-align: center; color: {C1};'>Stock Aging Summary (Pivot Table)</h2>", unsafe_allow_html=True)
         
         if "StockAgingSummary" in all_sheets:
-            # ২য় রো থেকে সরাসরি ডেটাফ্রেম নেওয়া (যা ফাংশনে skiprows=1 দিয়ে অলরেডি লোড করা আছে)
             aging_df = all_sheets["StockAgingSummary"].copy()
             aging_df.columns = [str(c).strip() for c in aging_df.columns]
             
-            # কলামের নামের কেস বা স্পেস ম্যাচিং সহজ করার জন্য রিনেম ম্যাপিং
             rename_map = {}
             for c in aging_df.columns:
                 if 'branch' in str(c).lower(): rename_map[c] = 'Branch'
@@ -101,8 +99,12 @@ if all_sheets:
                 max_days = int(aging_df['AgeDays'].max()) if 'AgeDays' in aging_df.columns and not aging_df.empty else 365
                 sel_days = f3.slider("Filter AgeDays Range:", min_value=0, max_value=max_days, value=(0, max_days))
                 
-                f_df = aging_df[(aging_df['Branch'].isin(sel_branches)) & (aging_df['AgeDays'] >= sel_days) & (aging_df['AgeDays'] <= sel_days)]
-                if categories and sel_categories: f_df = f_df[f_df['PDT Fly'].isin(sel_categories)]
+                # নিরাপদ ফিল্টারিং লজিক (KeyError প্রতিরোধক)
+                f_df = aging_df[aging_df['Branch'].isin(sel_branches)]
+                if 'AgeDays' in f_df.columns:
+                    f_df = f_df[(f_df['AgeDays'] >= sel_days[0]) & (f_df['AgeDays'] <= sel_days[1])]
+                if categories and sel_categories: 
+                    f_df = f_df[f_df['PDT Fly'].isin(sel_categories)]
                 
                 if not f_df.empty:
                     p_index = ['Branch']
