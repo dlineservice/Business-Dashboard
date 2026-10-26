@@ -5,108 +5,64 @@ import streamlit as st
 st.set_page_config(page_title="Executive Dashboard", layout="wide")
 C1, C2 = "#2E7D32", "#C8E6C9"
 
-st.markdown(f"""
-    <style>
-    .kpi-box {{
-        background-color: {C2}; padding: 20px; border-radius: 10px; border-left: 5px solid {C1}; text-align: center; margin-bottom: 10px;
-    }}
-    div[data-baseweb="tag"], span[data-baseweb="tag"], [class*="stMultiSelect"] span, div[class*="stMultiSelect"] div span, [data-baseweb="tag"] *, span[data-baseweb="tag"] * {{
-        border: none !important;
-        border-style: none !important;
-        outline: none !important;
-        box-shadow: none !important;
-    }}
-    div[data-baseweb="tag"], span[data-baseweb="tag"], [class*="stMultiSelect"] span, div[class*="stMultiSelect"] div span {{
-        background-color: {C2} !important;
-        color: #1b5e20 !important;
-        border-radius: 4px !important;
-        padding: 4px 8px !important;
-    }}
-    div[data-baseweb="tag"] button svg, span[data-baseweb="tag"] button svg, [class*="stMultiSelect"] span button svg {{
-        fill: #1b5e20 !important;
-    }}
-    div[data-baseweb="select"] > div {{
-        border: 1px solid {C1} !important;
-    }}
-    div[role="button"][tabindex="0"] svg, svg[class*="baseweb-icon"] {{
-        fill: {C1} !important;
-    }}
-    </style>
-""", unsafe_allow_html=True)
+st.markdown(f"""<style>
+    .kpi-box {{ background-color: {C2}; padding: 20px; border-radius: 10px; border-left: 5px solid {C1}; text-align: center; margin-bottom: 10px; }}
+    div[data-baseweb="tag"], span[data-baseweb="tag"], [class*="stMultiSelect"] span {{ background-color: {C2} !important; color: #1b5e20 !important; border: none !important; border-radius: 4px !important; padding: 4px 8px !important; }}
+    div[data-baseweb="tag"] button svg, [class*="stMultiSelect"] span button svg {{ fill: #1b5e20 !important; }}
+    div[data-baseweb="select"] > div {{ border: 1px solid {C1} !important; }}
+    div[role="button"][tabindex="0"] svg, svg[class*="baseweb-icon"] {{ fill: {C1} !important; }}
+</style>""", unsafe_allow_html=True)
 
 @st.cache_data
 def load_and_process_dashboard_data():
     try:
         xl = pd.ExcelFile("sales_data.xlsx")
         sn = xl.sheet_names
-        sd, br, pr = {}, {}, {}
-        ts, tq, ov = 0.0, 0.0, 0.0
+        sd, br, pr, ts, tq, ov = {}, {}, {}, 0.0, 0.0, 0.0
         
         for s in sn:
             df = pd.read_excel(xl, sheet_name=s, skiprows=1)
             sd[s] = df
-            if df.empty: 
-                continue
+            if df.empty: continue
             df_c = df.copy()
             df_c.columns = [str(c).strip().lower() for c in df_c.columns]
             
-            sc = [c for c in df_c.columns if 'sales' in c or 'value' in c or 'amount' in c]
-            qc = [c for c in df_c.columns if 'qty' in c or 'quantity' in c or 'count' in c]
+            sc = [c for c in df_c.columns if any(k in c for k in ['sales', 'value', 'amount'])]
+            qc = [c for c in df_c.columns if any(k in c for k in ['qty', 'quantity', 'count'])]
             
             if s.strip().lower() == "salessummary":
-                r = df_c.iloc[-1]
-                if sc:
-                    v_series = pd.to_numeric(r[sc], errors='coerce')
-                    v = v_series.iloc[0] if hasattr(v_series, 'iloc') else v_series
-                    if pd.notna(v): ts = float(v)
-                if ts == 0.0 and len(df_c) > 1:
-                    r = df_c.iloc[-2]
-                    if sc:
-                        v_series = pd.to_numeric(r[sc], errors='coerce')
-                        v = v_series.iloc[0] if hasattr(v_series, 'iloc') else v_series
-                        if pd.notna(v): ts = float(v)
-                        
-                bc = [c for c in df_c.columns if 'branch' in c or 'zone' in c or 'location' in c or 'state' in c]
+                for idx in [-1, -2]:
+                    if abs(idx) <= len(df_c) and sc:
+                        v = pd.to_numeric(df_c.iloc[idx][sc[0]], errors='coerce')
+                        if pd.notna(v): ts = float(v); break
+                bc = [c for c in df_c.columns if any(k in c for k in ['branch', 'zone', 'location', 'state'])]
                 if bc and sc:
-                    b_col_name = bc[0]
-                    s_col_name = sc[0]
-                    for idx, row in df_c.iterrows():
-                        n = str(row[b_col_name]).upper().strip()
-                        v = pd.to_numeric(row[s_col_name], errors='coerce')
+                    for _, row in df_c.iterrows():
+                        n = str(row[bc[0]]).upper().strip()
+                        v = pd.to_numeric(row[sc[0]], errors='coerce')
                         if pd.notna(v) and n not in ['NAN', '', 'GRAND TOTAL', 'TOTAL']:
                             br[n] = br.get(n, 0.0) + float(v)
                             
             if s.strip().lower() == "dailysalesreport":
-                r = df_c.iloc[-1]
-                if qc:
-                    v_series = pd.to_numeric(r[qc], errors='coerce')
-                    v = v_series.iloc[0] if hasattr(v_series, 'iloc') else v_series
-                    if pd.notna(v): tq = float(v)
-                if tq == 0.0 and len(df_c) > 1:
-                    r = df_c.iloc[-2]
-                    if qc:
-                        v_series = pd.to_numeric(r[qc], errors='coerce')
-                        v = v_series.iloc[0] if hasattr(v_series, 'iloc') else v_series
-                        if pd.notna(v): tq = float(v)
+                for idx in [-1, -2]:
+                    if abs(idx) <= len(df_c) and qc:
+                        v = pd.to_numeric(df_c.iloc[idx][qc[0]], errors='coerce')
+                        if pd.notna(v): tq = float(v); break
                         
             if s.strip().replace(" ", "").lower() == "agingsummary_operatingbranch":
                 try:
                     rdf = pd.read_excel(xl, sheet_name=s, header=None)
                     if rdf.shape[0] >= 30 and rdf.shape[1] >= 10:
-                        v_raw = rdf.iloc[29, 9]
-                        v = pd.to_numeric(v_raw, errors='coerce')
+                        v = pd.to_numeric(rdf.iloc[29, 9], errors='coerce')
                         if pd.notna(v): ov = float(v)
-                except: 
-                    ov = 0.0
+                except: ov = 0.0
                     
             if s.strip().lower() == "salespdtsummary":
-                pc = [c for c in df_c.columns if 'product' in c or 'item' in c or 'category' in c or 'fly' in c]
+                pc = [c for c in df_c.columns if any(k in c for k in ['product', 'item', 'category', 'fly'])]
                 if pc and sc:
-                    p_col_name = pc[0]
-                    s_col_name = sc[0]
-                    for idx, row in df_c.iterrows():
-                        n = str(row[p_col_name]).strip()
-                        v = pd.to_numeric(row[s_col_name], errors='coerce')
+                    for _, row in df_c.iterrows():
+                        n = str(row[pc[0]]).strip()
+                        v = pd.to_numeric(row[sc[0]], errors='coerce')
                         if pd.notna(v) and n not in ['nan', '', 'GRAND TOTAL', 'TOTAL']:
                             pr[n] = pr.get(n, 0.0) + float(v)
                             
@@ -136,7 +92,6 @@ if all_sheets:
         if not product_df.empty: 
             g2.plotly_chart(px.pie(product_df.head(10), names='Product Category', values='Total Value', hole=0.3, color_discrete_sequence=px.colors.sequential.Greens_r), use_container_width=True)
             
-        # --- StockAgingSummary Pivot Section ---
         st.markdown("<hr>", unsafe_allow_html=True)
         st.markdown(f"<h2 style='text-align: center; color: {C1};'>Stock Aging Summary (Pivot Table)</h2>", unsafe_allow_html=True)
         
@@ -145,66 +100,42 @@ if all_sheets:
             header_row = 0
             for idx, row in raw_aging.iterrows():
                 if 'branch' in [str(x).strip().lower() for x in row.values]:
-                    header_row = idx + 1
-                    break
-                    
+                    header_row = idx + 1; break
             aging_df = pd.read_excel("sales_data.xlsx", sheet_name="StockAgingSummary", skiprows=header_row)
             aging_df.columns = [str(c).strip() for c in aging_df.columns]
             
             if 'Branch' in aging_df.columns:
                 aging_df = aging_df[aging_df['Branch'].notna() & (~aging_df['Branch'].str.contains('Total|GRAND', case=False, na=False))]
-                
-                aging_df['Qty'] = pd.to_numeric(aging_df['Qty'], errors='coerce').fillna(0)
-                aging_df['Amount'] = pd.to_numeric(aging_df['Amount'], errors='coerce').fillna(0)
-                aging_df['AgeDays'] = pd.to_numeric(aging_df['AgeDays'], errors='coerce').fillna(0)
+                for c in ['Qty', 'Amount', 'AgeDays']:
+                    aging_df[c] = pd.to_numeric(aging_df[c], errors='coerce').fillna(0)
                 
                 f1, f2, f3 = st.columns(3)
-                branches = sorted(aging_df['Branch'].unique())
-                sel_branches = f1.multiselect("Filter Branch:", options=branches, default=branches)
-                
+                sel_branches = f1.multiselect("Filter Branch:", options=sorted(aging_df['Branch'].unique()), default=sorted(aging_df['Branch'].unique()))
                 categories = sorted(aging_df['PDT Fly'].dropna().unique()) if 'PDT Fly' in aging_df.columns else []
                 sel_categories = f2.multiselect("Filter PDT Fly:", options=categories, default=categories) if categories else []
-                
                 max_days = int(aging_df['AgeDays'].max()) if not aging_df.empty else 365
                 sel_days = f3.slider("Filter AgeDays Range:", min_value=0, max_value=max_days, value=(0, max_days))
                 
-                f_df = aging_df[
-                    (aging_df['Branch'].isin(sel_branches)) & 
-                    (aging_df['AgeDays'] >= sel_days) & 
-                    (aging_df['AgeDays'] <= sel_days)
-                ]
-                if categories and sel_categories:
-                    f_df = f_df[f_df['PDT Fly'].isin(sel_categories)]
+                f_df = aging_df[(aging_df['Branch'].isin(sel_branches)) & (aging_df['AgeDays'] >= sel_days[0]) & (aging_df['AgeDays'] <= sel_days[1])]
+                if categories and sel_categories: f_df = f_df[f_df['PDT Fly'].isin(sel_categories)]
                     
                 if not f_df.empty:
                     p_index = ['Branch']
-                    if 'PDT Fly' in f_df.columns:
-                        p_index.append('PDT Fly')
-                        
-                    pivot_res = pd.pivot_table(
-                        f_df,
-                        values=['Qty', 'Amount'],
-                        index=p_index,
-                        aggfunc={'Qty': 'sum', 'Amount': 'sum'},
-                        margins=True,
-                        margins_name='Grand Total'
-                    )
-                    pivot_res = pivot_res[['Qty', 'Amount']]
-                    
+                    if 'PDT Fly' in f_df.columns: p_index.append('PDT Fly')
+                    pivot_res = pd.pivot_table(f_df, values=['Qty', 'Amount'], index=p_index, aggfunc='sum', margins=True, margins_name='Grand Total')[['Qty', 'Amount']]
                     st.dataframe(pivot_res, use_container_width=True)
-                st.download_button(label="Download Filtered CSV", data=f_df.to_csv(index=False).encode("utf-8"), file_name="StockAging_Filtered.csv", mime="text/csv")
-else:
-st.warning("No data found matching the selected filters.")
-else:
-st.error("Sheet 'StockAgingSummary' not found in excel file.")
-else:
-st.title("Sheet View")
-sh = st.selectbox("Select Sheet:", options=sheet_names)
-df_sh = pd.read_excel("sales_data.xlsx", sheet_name=sh, skiprows=1)
-st.subheader(f"Table: {sh}")
-if len(df_sh.columns) > 0:
-fc = st.selectbox("Filter Column:", options=df_sh.columns)
-sv = st.multiselect("Select Values:", options=df_sh[fc].unique(), default=df_sh[fc].unique())
-f_df = df_sh[df_sh[fc].isin(sv)]
-st.dataframe(f_df, use_container_width=True)
-st.download_button(label="Download CSV", data=f_df.to_csv(index=False).encode("utf-8"), file_name=f"{sh}.csv", mime="text/csv")
+                    st.download_button(label="Download Filtered CSV", data=f_df.to_csv(index=False).encode("utf-8"), file_name="StockAging_Filtered.csv", mime="text/csv")
+                else: st.warning("No data found matching the selected filters.")
+        else: st.error("Sheet 'StockAgingSummary' not found in excel file.")
+            
+    else:
+        st.title("Sheet View")
+        sh = st.selectbox("Select Sheet:", options=sheet_names)
+        df_sh = pd.read_excel("sales_data.xlsx", sheet_name=sh, skiprows=1)
+        st.subheader(f"Table: {sh}")
+        if len(df_sh.columns) > 0:
+            fc = st.selectbox("Filter Column:", options=df_sh.columns)
+            sv = st.multiselect("Select Values:", options=df_sh[fc].unique(), default=df_sh[fc].unique())
+            f_df = df_sh[df_sh[fc].isin(sv)]
+            st.dataframe(f_df, use_container_width=True)
+            st.download_button(label="Download CSV", data=f_df.to_csv(index=False).encode("utf-8"), file_name=f"{sh}.csv", mime="text/csv")
