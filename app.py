@@ -57,19 +57,19 @@ def load_and_process_dashboard_data():
                 r = df_c.iloc[-1]
                 if sc:
                     v_series = pd.to_numeric(r[sc], errors='coerce')
-                    v = v_series.iloc[0] if hasattr(v_series, 'iloc') else v_series
+                    v = v_series.iloc if hasattr(v_series, 'iloc') else v_series
                     if pd.notna(v): ts = float(v)
                 if ts == 0.0 and len(df_c) > 1:
                     r = df_c.iloc[-2]
                     if sc:
                         v_series = pd.to_numeric(r[sc], errors='coerce')
-                        v = v_series.iloc[0] if hasattr(v_series, 'iloc') else v_series
+                        v = v_series.iloc if hasattr(v_series, 'iloc') else v_series
                         if pd.notna(v): ts = float(v)
                         
                 bc = [c for c in df_c.columns if 'branch' in c or 'zone' in c or 'location' in c or 'state' in c]
                 if bc and sc:
-                    b_col_name = bc[0]
-                    s_col_name = sc[0]
+                    b_col_name = bc
+                    s_col_name = sc
                     for idx, row in df_c.iterrows():
                         n = str(row[b_col_name]).upper().strip()
                         v = pd.to_numeric(row[s_col_name], errors='coerce')
@@ -80,20 +80,20 @@ def load_and_process_dashboard_data():
                 r = df_c.iloc[-1]
                 if qc:
                     v_series = pd.to_numeric(r[qc], errors='coerce')
-                    v = v_series.iloc[0] if hasattr(v_series, 'iloc') else v_series
+                    v = v_series.iloc if hasattr(v_series, 'iloc') else v_series
                     if pd.notna(v): tq = float(v)
                 if tq == 0.0 and len(df_c) > 1:
                     r = df_c.iloc[-2]
                     if qc:
                         v_series = pd.to_numeric(r[qc], errors='coerce')
-                        v = v_series.iloc[0] if hasattr(v_series, 'iloc') else v_series
+                        v = v_series.iloc if hasattr(v_series, 'iloc') else v_series
                         if pd.notna(v): tq = float(v)
                         
             if s.strip().replace(" ", "").lower() == "agingsummary_operatingbranch":
                 try:
                     rdf = pd.read_excel(xl, sheet_name=s, header=None)
-                    if rdf.shape[0] >= 30 and rdf.shape[1] >= 10:
-                        v_raw = rdf.iloc[29, 9]
+                    if rdf.shape >= 30 and rdf.shape >= 10:
+                        v_raw = rdf.iloc
                         v = pd.to_numeric(v_raw, errors='coerce')
                         if pd.notna(v): ov = float(v)
                 except: 
@@ -102,8 +102,8 @@ def load_and_process_dashboard_data():
             if s.strip().lower() == "salespdtsummary":
                 pc = [c for c in df_c.columns if 'product' in c or 'item' in c or 'category' in c or 'fly' in c]
                 if pc and sc:
-                    p_col_name = pc[0]
-                    s_col_name = sc[0]
+                    p_col_name = pc
+                    s_col_name = sc
                     for idx, row in df_c.iterrows():
                         n = str(row[p_col_name]).strip()
                         v = pd.to_numeric(row[s_col_name], errors='coerce')
@@ -122,12 +122,14 @@ all_sheets, sheet_names, total_sales, total_qty, total_overdue, branch_df, produ
 if all_sheets:
     st.sidebar.title("Control Panel")
     mode = st.sidebar.radio("View:", ["Summary", "Sheet View"])
+    
     if mode == "Summary":
         st.markdown(f"<h1 style='text-align: center; color: {C1};'>Performance Dashboard</h1>", unsafe_allow_html=True)
         col1, col2, col3 = st.columns(3)
         col1.markdown(f"<div class='kpi-box'><h3>Total Sales</h3><h2>₹ {total_sales:,.2f}</h2></div>", unsafe_allow_html=True)
         col2.markdown(f"<div class='kpi-box'><h3>Total Qty</h3><h2>{total_qty:,.0f} Pcs</h2></div>", unsafe_allow_html=True)
         col3.markdown(f"<div class='kpi-box'><h3>Overdue Amount</h3><h2>₹ {total_overdue:,.2f}</h2></div>", unsafe_allow_html=True)
+        
         g1, g2 = st.columns(2)
         if not branch_df.empty: 
             g1.plotly_chart(px.bar(branch_df, x='Branch', y='Net Sales', text_auto='.2s', color_discrete_sequence=[C1], template="plotly_white"), use_container_width=True)
@@ -168,8 +170,8 @@ if all_sheets:
                 
                 f_df = aging_df[
                     (aging_df['Branch'].isin(sel_branches)) & 
-                    (aging_df['AgeDays'] >= sel_days[0]) & 
-                    (aging_df['AgeDays'] <= sel_days[1])
+                    (aging_df['AgeDays'] >= sel_days) & 
+                    (aging_df['AgeDays'] <= sel_days)
                 ]
                 if categories and sel_categories:
                     f_df = f_df[f_df['PDT Fly'].isin(sel_categories)]
