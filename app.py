@@ -14,27 +14,27 @@ def load_and_process_dashboard_data():
             sd[s] = df
             if df.empty: continue
             df_c = df.copy(); df_c.columns = [str(c).strip().lower() for c in df_c.columns]
-            sc = [c for c in df_c.columns if 'sales' in c or 'value' in c or 'amount' in c]
-            qc = [c for c in df_c.columns if 'qty' in c or 'quantity' in c or 'count' in c]
+            sc = [c for c in df_c.columns if any(k in c for k in ['sales', 'value', 'amount'])]
+            qc = [c for c in df_c.columns if any(k in c for k in ['qty', 'quantity', 'count'])]
             if s.strip().lower() == "salessummary":
                 r = df_c.iloc[-1]
                 if sc and pd.notna(r[sc].iloc[0] if hasattr(r[sc], 'iloc') else r[sc]): ts = float(r[sc].iloc[0] if hasattr(r[sc], 'iloc') else r[sc])
-                bc = [c for c in df_c.columns if 'branch' in c or 'zone' in c or 'location' in c or 'state' in c]
+                bc = [c for c in df_c.columns if any(k in c for k in ['branch', 'zone', 'location', 'state'])]
                 if bc and sc:
                     for _, row in df_c.iterrows():
                         n = str(row[bc[0]]).upper().strip()
                         v = pd.to_numeric(row[sc[0]], errors='coerce')
                         if pd.notna(v) and n not in ['NAN', '', 'GRAND TOTAL', 'TOTAL']: br[n] = br.get(n, 0.0) + float(v)
-            if s.strip().lower() == "dailysalesreport":
+            if s.strip().lower() == "dailysalesreport" and qc:
                 r = df_c.iloc[-1]
-                if qc and pd.notna(r[qc].iloc[0] if hasattr(r[qc], 'iloc') else r[qc]): tq = float(r[qc].iloc[0] if hasattr(r[qc], 'iloc') else r[qc])
+                tq = float(pd.to_numeric(r[qc[0]], errors='coerce')) if pd.notna(pd.to_numeric(r[qc[0]], errors='coerce')) else 0.0
             if s.strip().replace(" ", "").lower() == "agingsummary_operatingbranch":
                 try:
                     rdf = pd.read_excel(xl, sheet_name=s, header=None)
-                    if rdf.shape[0] >= 30 and rdf.shape[1] >= 10 and pd.notna(rdf.iloc[29, 9]): ov = float(pd.to_numeric(rdf.iloc[29, 9], errors='coerce'))
+                    if rdf.shape[0] >= 30 and rdf.shape[1] >= 10: ov = float(pd.to_numeric(rdf.iloc[29, 9], errors='coerce'))
                 except: ov = 0.0
             if s.strip().lower() == "salespdtsummary":
-                pc = [c for c in df_c.columns if 'product' in c or 'item' in c or 'category' in c or 'fly' in c]
+                pc = [c for c in df_c.columns if any(k in c for k in ['product', 'item', 'category', 'fly'])]
                 if pc and sc:
                     for _, row in df_c.iterrows():
                         n = str(row[pc[0]]).strip()
@@ -71,12 +71,13 @@ if all_sheets:
             aging_df.columns = [str(c).strip() for c in aging_df.columns]
             if 'Branch' in aging_df.columns:
                 aging_df = aging_df[aging_df['Branch'].notna() & (~aging_df['Branch'].str.contains('Total|GRAND', case=False, na=False))]
-                for c in ['Qty', 'Amount', 'AgeDays']: aging_df[c] = pd.to_numeric(aging_df[c], errors='coerce').fillna(0)
+                for c in ['Qty', 'Amount', 'AgeDays']: 
+                    if c in aging_df.columns: aging_df[c] = pd.to_numeric(aging_df[c], errors='coerce').fillna(0)
                 f1, f2, f3 = st.columns(3)
                 sel_branches = f1.multiselect("Filter Branch:", options=sorted(aging_df['Branch'].unique()), default=sorted(aging_df['Branch'].unique()))
                 categories = sorted(aging_df['PDT Fly'].dropna().unique()) if 'PDT Fly' in aging_df.columns else []
                 sel_categories = f2.multiselect("Filter PDT Fly:", options=categories, default=categories) if categories else []
-                max_days = int(aging_df['AgeDays'].max()) if not aging_df.empty else 365
+                max_days = int(aging_df['AgeDays'].max()) if 'AgeDays' in aging_df.columns and not aging_df.empty else 365
                 sel_days = f3.slider("Filter AgeDays Range:", min_value=0, max_value=max_days, value=(0, max_days))
                 f_df = aging_df[(aging_df['Branch'].isin(sel_branches)) & (aging_df['AgeDays'] >= sel_days) & (aging_df['AgeDays'] <= sel_days)]
                 if categories and sel_categories: f_df = f_df[f_df['PDT Fly'].isin(sel_categories)]
