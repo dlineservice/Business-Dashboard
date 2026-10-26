@@ -20,12 +20,12 @@ def load_and_process_dashboard_data():
             if s.strip().lower() == "salessummary" and sc:
                 r = df_c.iloc[-1]
                 v_series = pd.to_numeric(r[sc], errors='coerce')
-                v = v_series.iloc if hasattr(v_series, 'iloc') else v_series
+                v = v_series.iloc[0] if hasattr(v_series, 'iloc') else v_series
                 if pd.notna(v): ts = float(v)
                 bc = [c for c in df_c.columns if any(k in c for k in ['branch', 'zone', 'location', 'state'])]
                 if bc:
-                    b_col = bc
-                    s_col = sc
+                    b_col = bc[0]
+                    s_col = sc[0]
                     for _, row in df_c.iterrows():
                         n = str(row[b_col]).upper().strip()
                         v_br = pd.to_numeric(row[s_col], errors='coerce')
@@ -33,20 +33,21 @@ def load_and_process_dashboard_data():
             if s.strip().lower() == "dailysalesreport" and qc:
                 r = df_c.iloc[-1]
                 v_series = pd.to_numeric(r[qc], errors='coerce')
-                v = v_series.iloc if hasattr(v_series, 'iloc') else v_series
+                v = v_series.iloc[0] if hasattr(v_series, 'iloc') else v_series
                 if pd.notna(v): tq = float(v)
             if s.strip().replace(" ", "").lower() == "agingsummary_operatingbranch":
                 try:
                     rdf = pd.read_excel(xl, sheet_name=s, header=None)
-                    if rdf.shape >= 30 and rdf.shape >= 10:
-                        v_num = pd.to_numeric(rdf.iloc, errors='coerce')
+                    if rdf.shape[0] >= 30 and rdf.shape[1] >= 10:
+                        v_raw = rdf.iloc[29, 9]
+                        v_num = pd.to_numeric(v_raw, errors='coerce')
                         if pd.notna(v_num): ov = float(v_num)
                 except: ov = 0.0
             if s.strip().lower() == "salespdtsummary":
                 pc = [c for c in df_c.columns if any(k in c for k in ['product', 'item', 'category', 'fly'])]
                 if pc and sc:
-                    p_col = pc
-                    s_col = sc
+                    p_col = pc[0]
+                    s_col = sc[0]
                     for _, row in df_c.iterrows():
                         n = str(row[p_col]).strip()
                         v_p = pd.to_numeric(row[s_col], errors='coerce')
@@ -92,7 +93,6 @@ if all_sheets:
                 if 'AgeDays' in aging_df.columns:
                     aging_df['AgeDays'] = pd.to_numeric(aging_df['AgeDays'], errors='coerce').fillna(0)
                 
-                # Branch এবং PDT Fly ব্যতীত বাকি কলামগুলোকেই অ্যামাউন্ট (ভ্যালু কলাম) হিসেবে গণ্য করা হচ্ছে
                 exclude_cols = ['Branch', 'AgeDays', 'PDT Fly']
                 value_cols = [c for c in aging_df.columns if c not in exclude_cols]
                 
