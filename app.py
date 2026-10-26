@@ -57,19 +57,19 @@ def load_and_process_dashboard_data():
                 r = df_c.iloc[-1]
                 if sc:
                     v_series = pd.to_numeric(r[sc], errors='coerce')
-                    v = v_series.iloc if hasattr(v_series, 'iloc') else v_series
+                    v = v_series.iloc[0] if hasattr(v_series, 'iloc') else v_series
                     if pd.notna(v): ts = float(v)
                 if ts == 0.0 and len(df_c) > 1:
                     r = df_c.iloc[-2]
                     if sc:
                         v_series = pd.to_numeric(r[sc], errors='coerce')
-                        v = v_series.iloc if hasattr(v_series, 'iloc') else v_series
+                        v = v_series.iloc[0] if hasattr(v_series, 'iloc') else v_series
                         if pd.notna(v): ts = float(v)
                         
                 bc = [c for c in df_c.columns if 'branch' in c or 'zone' in c or 'location' in c or 'state' in c]
                 if bc and sc:
-                    b_col_name = bc
-                    s_col_name = sc
+                    b_col_name = bc[0]
+                    s_col_name = sc[0]
                     for idx, row in df_c.iterrows():
                         n = str(row[b_col_name]).upper().strip()
                         v = pd.to_numeric(row[s_col_name], errors='coerce')
@@ -80,20 +80,20 @@ def load_and_process_dashboard_data():
                 r = df_c.iloc[-1]
                 if qc:
                     v_series = pd.to_numeric(r[qc], errors='coerce')
-                    v = v_series.iloc if hasattr(v_series, 'iloc') else v_series
+                    v = v_series.iloc[0] if hasattr(v_series, 'iloc') else v_series
                     if pd.notna(v): tq = float(v)
                 if tq == 0.0 and len(df_c) > 1:
                     r = df_c.iloc[-2]
                     if qc:
                         v_series = pd.to_numeric(r[qc], errors='coerce')
-                        v = v_series.iloc if hasattr(v_series, 'iloc') else v_series
+                        v = v_series.iloc[0] if hasattr(v_series, 'iloc') else v_series
                         if pd.notna(v): tq = float(v)
                         
             if s.strip().replace(" ", "").lower() == "agingsummary_operatingbranch":
                 try:
                     rdf = pd.read_excel(xl, sheet_name=s, header=None)
-                    if rdf.shape >= 30 and rdf.shape >= 10:
-                        v_raw = rdf.iloc
+                    if rdf.shape[0] >= 30 and rdf.shape[1] >= 10:
+                        v_raw = rdf.iloc[29, 9]
                         v = pd.to_numeric(v_raw, errors='coerce')
                         if pd.notna(v): ov = float(v)
                 except: 
@@ -102,8 +102,8 @@ def load_and_process_dashboard_data():
             if s.strip().lower() == "salespdtsummary":
                 pc = [c for c in df_c.columns if 'product' in c or 'item' in c or 'category' in c or 'fly' in c]
                 if pc and sc:
-                    p_col_name = pc
-                    s_col_name = sc
+                    p_col_name = pc[0]
+                    s_col_name = sc[0]
                     for idx, row in df_c.iterrows():
                         n = str(row[p_col_name]).strip()
                         v = pd.to_numeric(row[s_col_name], errors='coerce')
@@ -166,7 +166,7 @@ if all_sheets:
                 sel_categories = f2.multiselect("Filter PDT Fly:", options=categories, default=categories) if categories else []
                 
                 max_days = int(aging_df['AgeDays'].max()) if not aging_df.empty else 365
-                sel_days = f3.slider("Filter AgeDays Range:", min_value=0, max_value=max_value, value=(0, max_value))
+                sel_days = f3.slider("Filter AgeDays Range:", min_value=0, max_value=max_days, value=(0, max_days))
                 
                 f_df = aging_df[
                     (aging_df['Branch'].isin(sel_branches)) & 
@@ -192,7 +192,7 @@ if all_sheets:
                     pivot_res = pivot_res[['Qty', 'Amount']]
                     
                     st.dataframe(pivot_res, use_container_width=True)
-st.download_button(label="Download Filtered CSV", data=f_df.to_csv(index=False).encode("utf-8"), file_name="StockAging_Filtered.csv", mime="text/csv")
+                st.download_button(label="Download Filtered CSV", data=f_df.to_csv(index=False).encode("utf-8"), file_name="StockAging_Filtered.csv", mime="text/csv")
 else:
 st.warning("No data found matching the selected filters.")
 else:
