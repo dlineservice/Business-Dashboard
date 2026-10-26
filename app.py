@@ -24,11 +24,12 @@ def load_and_process_dashboard_data():
                 if pd.notna(v): ts = float(v)
                 bc = [c for c in df_c.columns if any(k in c for k in ['branch', 'zone', 'location', 'state'])]
                 if bc:
+                    b_col = bc[0]
+                    s_col = sc[0]
                     for _, row in df_c.iterrows():
-                        n = str(row[bc].iloc[0] if hasattr(row[bc], 'iloc') else row[bc]).upper().strip()
-                        v_br = pd.to_numeric(row[sc], errors='coerce')
-                        v_br_val = v_br.iloc[0] if hasattr(v_br, 'iloc') else v_br
-                        if pd.notna(v_br_val) and n not in ['NAN', '', 'GRAND TOTAL', 'TOTAL']: br[n] = br.get(n, 0.0) + float(v_br_val)
+                        n = str(row[b_col]).upper().strip()
+                        v_br = pd.to_numeric(row[s_col], errors='coerce')
+                        if pd.notna(v_br) and n not in ['NAN', '', 'GRAND TOTAL', 'TOTAL']: br[n] = br.get(n, 0.0) + float(v_br)
             if s.strip().lower() == "dailysalesreport" and qc:
                 r = df_c.iloc[-1]
                 v_series = pd.to_numeric(r[qc], errors='coerce')
@@ -38,18 +39,18 @@ def load_and_process_dashboard_data():
                 try:
                     rdf = pd.read_excel(xl, sheet_name=s, header=None)
                     if rdf.shape[0] >= 30 and rdf.shape[1] >= 10:
-                        v_raw = rdf.iloc[29, 9]
-                        v_num = pd.to_numeric(v_raw, errors='coerce')
+                        v_num = pd.to_numeric(rdf.iloc[29, 9], errors='coerce')
                         if pd.notna(v_num): ov = float(v_num)
                 except: ov = 0.0
             if s.strip().lower() == "salespdtsummary":
                 pc = [c for c in df_c.columns if any(k in c for k in ['product', 'item', 'category', 'fly'])]
                 if pc and sc:
+                    p_col = pc[0]
+                    s_col = sc[0]
                     for _, row in df_c.iterrows():
-                        n = str(row[pc].iloc[0] if hasattr(row[pc], 'iloc') else row[pc]).strip()
-                        v_p = pd.to_numeric(row[sc], errors='coerce')
-                        v_p_val = v_p.iloc[0] if hasattr(v_p, 'iloc') else v_p
-                        if pd.notna(v_p_val) and n not in ['nan', '', 'GRAND TOTAL', 'TOTAL']: pr[n] = pr.get(n, 0.0) + float(v_p_val)
+                        n = str(row[p_col]).strip()
+                        v_p = pd.to_numeric(row[s_col], errors='coerce')
+                        if pd.notna(v_p) and n not in ['nan', '', 'GRAND TOTAL', 'TOTAL']: pr[n] = pr.get(n, 0.0) + float(v_p)
         b_df = pd.DataFrame(list(br.items()), columns=['Branch', 'Net Sales']).sort_values(by='Net Sales', ascending=False)
         p_df = pd.DataFrame(list(pr.items()), columns=['Product Category', 'Total Value']).sort_values(by='Total Value', ascending=False)
         return sd, sn, ts, tq, (0.0 if pd.isna(ov) else ov), b_df, p_df
@@ -89,8 +90,10 @@ if all_sheets:
             
             if 'Branch' in aging_df.columns:
                 aging_df = aging_df[aging_df['Branch'].notna() & (~aging_df['Branch'].astype(str).str.contains('Total|GRAND', case=False, na=False))]
+                
                 for c in ['Qty', 'Amount', 'AgeDays']:
-                    if c in aging_df.columns: aging_df[c] = pd.to_numeric(aging_df[c], errors='coerce').fillna(0)
+                    if c in aging_df.columns: 
+                        aging_df[c] = pd.to_numeric(aging_df[c], errors='coerce').fillna(0)
                 
                 f1, f2, f3 = st.columns(3)
                 sel_branches = f1.multiselect("Filter Branch:", options=sorted(aging_df['Branch'].unique()), default=sorted(aging_df['Branch'].unique()))
@@ -99,7 +102,6 @@ if all_sheets:
                 max_days = int(aging_df['AgeDays'].max()) if 'AgeDays' in aging_df.columns and not aging_df.empty else 365
                 sel_days = f3.slider("Filter AgeDays Range:", min_value=0, max_value=max_days, value=(0, max_days))
                 
-                # নিরাপদ ফিল্টারিং লজিক (KeyError প্রতিরোধক)
                 f_df = aging_df[aging_df['Branch'].isin(sel_branches)]
                 if 'AgeDays' in f_df.columns:
                     f_df = f_df[(f_df['AgeDays'] >= sel_days[0]) & (f_df['AgeDays'] <= sel_days[1])]
@@ -109,12 +111,26 @@ if all_sheets:
                 if not f_df.empty:
                     p_index = ['Branch']
                     if 'PDT Fly' in f_df.columns: p_index.append('PDT Fly')
-                    pivot_res = pd.pivot_table(f_df, values=['Qty', 'Amount'], index=p_index, aggfunc='sum', margins=True, margins_name='Grand Total')[['Qty', 'Amount']]
-                    st.dataframe(pivot_res, use_container_width=True)
-                    st.download_button(label="Download Filtered CSV", data=f_df.to_csv(index=False).encode("utf-8"), file_name="StockAging_Filtered.csv", mime="text/csv")
-                else: st.warning("No data found matching the selected filters.")
-            else: st.error("Column 'Branch' not found in StockAgingSummary sheet columns.")
-        else: st.error("Sheet 'StockAgingSummary' not found in excel file.")
+                    
+                    available_values = [v for v in ['Qty', 'Amount'] if v in f_df.columns]
+                    
+                    if available_values:
+                        pivot_res = pd.pivot_table(f_df, values=available_values, index=p_index, aggfunc='sum', margins=True, margins_name='Grand Total')
+                        existing_cols = [c for c in ['Qty', 'Amount'] if c in pivot_res.columns]
+                        if existing_cols:
+                            pivot_res = pivot_res[existing_cols]
+                        
+                        st.dataframe(pivot_res, use_container_width=True)
+                        st.download_button(label="Download Filtered CSV", data=f_df.to_csv(index=False).encode("utf-8"), file_name="StockAging_Filtered.csv", mime="text/csv")
+                    else:
+                        st.error("Could not find quantitative values (Qty/Amount) in the sheet columns.")
+                else: 
+                    st.warning("No data found matching the selected filters.")
+            else: 
+                st.error("Column 'Branch' not found in StockAgingSummary sheet columns.")
+        else: 
+            st.error("Sheet 'StockAgingSummary' not found in excel file.")
+            
     else:
         st.title("Sheet View")
         sh = st.selectbox("Select Sheet:", options=sheet_names)
