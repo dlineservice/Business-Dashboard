@@ -132,15 +132,77 @@ if all_sheets:
         if not branch_df.empty: 
             g1.plotly_chart(px.bar(branch_df, x='Branch', y='Net Sales', text_auto='.2s', color_discrete_sequence=[C1], template="plotly_white"), use_container_width=True)
         if not product_df.empty: 
-            g2.plotly_chart(px.pie(product_df.head(10), names='Product Category', values='Total Value', hole=0.3, color_discrete_sequence=px.colors.sequential.Greens_r), use_container_width=True)
-    else:
-        st.title("Sheet View")
-        sh = st.selectbox("Select Sheet:", options=sheet_names)
-        df_sh = pd.read_excel("sales_data.xlsx", sheet_name=sh, skiprows=1)
-        st.subheader(f"Table: {sh}")
-        if len(df_sh.columns) > 0:
-            fc = st.selectbox("Filter Column:", options=df_sh.columns)
-            sv = st.multiselect("Select Values:", options=df_sh[fc].unique(), default=df_sh[fc].unique())
-            f_df = df_sh[df_sh[fc].isin(sv)]
-            st.dataframe(f_df, use_container_width=True)
-            st.download_button(label="Download CSV", data=f_df.to_csv(index=False).encode("utf-8"), file_name=f"{sh}.csv", mime="text/csv")
+            g2.plotly_chart(px.pie(product_df.head(10), names='Product Category', values='Total Value', hole=0.3, color_discrete_sequence=px.colors.sequential.Gre Greens_r), use_container_width=True)
+            
+        # --- StockAgingSummary Pivot Section ---
+        st.markdown("<hr>", unsafe_allow_html=True)
+        st.markdown(f"<h2 style='text-align: center; color: {C1};'>Stock Aging Summary (Pivot Table)</h2>", unsafe_allow_html=True)
+        
+        if "StockAgingSummary" in all_sheets:
+            raw_aging = all_sheets["StockAgingSummary"]
+            header_row = 0
+            for idx, row in raw_aging.iterrows():
+                if 'branch' in [str(x).strip().lower() for x in row.values]:
+                    header_row = idx + 1
+                    break
+                    
+            aging_df = pd.read_excel("sales_data.xlsx", sheet_name="StockAgingSummary", skiprows=header_row)
+            aging_df.columns = [str(c).strip() for c in aging_df.columns]
+            
+            if 'Branch' in aging_df.columns:
+                aging_df = aging_df[aging_df['Branch'].notna() & (~aging_df['Branch'].str.contains('Total|GRAND', case=False, na=False))]
+                
+                aging_df['Qty'] = pd.to_numeric(aging_df['Qty'], errors='coerce').fillna(0)
+                aging_df['Amount'] = pd.to_numeric(aging_df['Amount'], errors='coerce').fillna(0)
+                aging_df['AgeDays'] = pd.to_numeric(aging_df['AgeDays'], errors='coerce').fillna(0)
+                
+                f1, f2, f3 = st.columns(3)
+                branches = sorted(aging_df['Branch'].unique())
+                sel_branches = f1.multiselect("Filter Branch:", options=branches, default=branches)
+                
+                categories = sorted(aging_df['PDT Fly'].dropna().unique()) if 'PDT Fly' in aging_df.columns else []
+                sel_categories = f2.multiselect("Filter PDT Fly:", options=categories, default=categories) if categories else []
+                
+                max_days = int(aging_df['AgeDays'].max()) if not aging_df.empty else 365
+                sel_days = f3.slider("Filter AgeDays Range:", min_value=0, max_value=max_value, value=(0, max_value))
+                
+                f_df = aging_df[
+                    (aging_df['Branch'].isin(sel_branches)) & 
+                    (aging_df['AgeDays'] >= sel_days[0]) & 
+                    (aging_df['AgeDays'] <= sel_days[1])
+                ]
+                if categories and sel_categories:
+                    f_df = f_df[f_df['PDT Fly'].isin(sel_categories)]
+                    
+                if not f_df.empty:
+                    p_index = ['Branch']
+                    if 'PDT Fly' in f_df.columns:
+                        p_index.append('PDT Fly')
+                        
+                    pivot_res = pd.pivot_table(
+                        f_df,
+                        values=['Qty', 'Amount'],
+                        index=p_index,
+                        aggfunc={'Qty': 'sum', 'Amount': 'sum'},
+                        margins=True,
+                        margins_name='Grand Total'
+                    )
+                    pivot_res = pivot_res[['Qty', 'Amount']]
+                    
+                    st.dataframe(pivot_res, use_container_width=True)
+st.download_button(label="Download Filtered CSV", data=f_df.to_csv(index=False).encode("utf-8"), file_name="StockAging_Filtered.csv", mime="text/csv")
+else:
+st.warning("No data found matching the selected filters.")
+else:
+st.error("Sheet 'StockAgingSummary' not found in excel file.")
+else:
+st.title("Sheet View")
+sh = st.selectbox("Select Sheet:", options=sheet_names)
+df_sh = pd.read_excel("sales_data.xlsx", sheet_name=sh, skiprows=1)
+st.subheader(f"Table: {sh}")
+if len(df_sh.columns) > 0:
+fc = st.selectbox("Filter Column:", options=df_sh.columns)
+sv = st.multiselect("Select Values:", options=df_sh[fc].unique(), default=df_sh[fc].unique())
+f_df = df_sh[df_sh[fc].isin(sv)]
+st.dataframe(f_df, use_container_width=True)
+st.download_button(label="Download CSV", data=f_df.to_csv(index=False).encode("utf-8"), file_name=f"{sh}.csv", mime="text/csv")
