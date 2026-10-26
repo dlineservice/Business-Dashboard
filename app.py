@@ -132,7 +132,7 @@ if all_sheets:
         if not branch_df.empty: 
             g1.plotly_chart(px.bar(branch_df, x='Branch', y='Net Sales', text_auto='.2s', color_discrete_sequence=[C1], template="plotly_white"), use_container_width=True)
         if not product_df.empty: 
-            g2.plotly_chart(px.pie(product_df.head(10), names='Product Category', values='Total Value', hole=0.3, color_discrete_sequence=px.colors.sequential.Gre Greens_r), use_container_width=True)
+            g2.plotly_chart(px.pie(product_df.head(10), names='Product Category', values='Total Value', hole=0.3, color_discrete_sequence=px.colors.sequential.Greens_r), use_container_width=True)
             
         # --- StockAgingSummary Pivot Section ---
         st.markdown("<hr>", unsafe_allow_html=True)
@@ -168,8 +168,8 @@ if all_sheets:
                 
                 f_df = aging_df[
                     (aging_df['Branch'].isin(sel_branches)) & 
-                    (aging_df['AgeDays'] >= sel_days[0]) & 
-                    (aging_df['AgeDays'] <= sel_days[1])
+                    (aging_df['AgeDays'] >= sel_days) & 
+                    (aging_df['AgeDays'] <= sel_days)
                 ]
                 if categories and sel_categories:
                     f_df = f_df[f_df['PDT Fly'].isin(sel_categories)]
