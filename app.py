@@ -18,27 +18,28 @@ def load_and_process_dashboard_data():
             qc = [c for c in df_c.columns if any(k in c for k in ['qty', 'quantity', 'count'])]
             
             if s.strip().lower() == "salessummary" and sc:
-                r = df_c.iloc[-1]; v = r[sc].values[0] if hasattr(r[sc], 'values') else r[sc]
+                r = df_c.iloc[-1]; v = r[sc].values if hasattr(r[sc], 'values') else r[sc]
                 if pd.notna(v): ts = float(v)
                 bc = [c for c in df_c.columns if any(k in c for k in ['branch', 'zone', 'location', 'state'])]
                 if bc:
                     for _, row in df_c.iterrows():
-                        n = str(row[bc[0]]).upper().strip()
-                        v_br = pd.to_numeric(row[sc[0]], errors='coerce')
+                        n = str(row[bc]).upper().strip()
+                        v_br = pd.to_numeric(row[sc], errors='coerce')
                         if pd.notna(v_br) and n not in ['NAN', '', 'GRAND TOTAL', 'TOTAL']: br[n] = br.get(n, 0.0) + float(v_br)
             if s.strip().lower() == "dailysalesreport" and qc:
-                r = df_c.iloc[-1]; v = r[qc].values[0] if hasattr(r[qc], 'values') else r[qc]
+                r = df_c.iloc[-1]; v = r[qc].values if hasattr(r[qc], 'values') else r[qc]
                 if pd.notna(v): tq = float(v)
             if s.strip().replace(" ", "").lower() == "agingsummary_operatingbranch":
                 try:
                     rdf = pd.read_excel(xl, sheet_name=s, header=None)
-                    if rdf.shape[0] >= 30 and rdf.shape[1] >= 10: ov = float(pd.to_numeric(rdf.iloc[29, 9], errors='coerce'))
+                    if rdf.shape >= 30 and rdf.shape >= 10: ov = float(pd.to_numeric(rdf.iloc, errors='coerce'))
                 except: ov = 0.0
-            if s.strip().lower() == "salespdtsummary" and pc:= [c for c in df_c.columns if any(k in c for k in ['product', 'item', 'category', 'fly'])]:
-                if sc:
+            if s.strip().lower() == "salespdtsummary":
+                pc = [c for c in df_c.columns if any(k in c for k in ['product', 'item', 'category', 'fly'])]
+                if pc and sc:
                     for _, row in df_c.iterrows():
-                        n = str(row[pc[0]]).strip()
-                        v_p = pd.to_numeric(row[sc[0]], errors='coerce')
+                        n = str(row[pc]).strip()
+                        v_p = pd.to_numeric(row[sc], errors='coerce')
                         if pd.notna(v_p) and n not in ['nan', '', 'GRAND TOTAL', 'TOTAL']: pr[n] = pr.get(n, 0.0) + float(v_p)
         b_df = pd.DataFrame(list(br.items()), columns=['Branch', 'Net Sales']).sort_values(by='Net Sales', ascending=False)
         p_df = pd.DataFrame(list(pr.items()), columns=['Product Category', 'Total Value']).sort_values(by='Total Value', ascending=False)
@@ -88,6 +89,7 @@ if all_sheets:
                     st.dataframe(pivot_res, use_container_width=True)
                     st.download_button(label="Download Filtered CSV", data=f_df.to_csv(index=False).encode("utf-8"), file_name="StockAging_Filtered.csv", mime="text/csv")
                 else: st.warning("No data found matching the selected filters.")
+            else: st.error("Column 'Branch' not found in StockAgingSummary sheet.")
         else: st.error("Sheet 'StockAgingSummary' not found in excel file.")
     else:
         st.title("Sheet View")
