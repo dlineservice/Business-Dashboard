@@ -79,7 +79,7 @@ if all_sheets:
             fig_combo.update_layout(title="<b>Customer Overdue Summary</b>", template="plotly_white", barmode='group', legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
             st.plotly_chart(fig_combo, use_container_width=True)
         st.markdown("<hr>", unsafe_allow_html=True)
-        st.markdown(f"<h2 style='text-align: center; color: {C1};'>Stock Aging Summary (Pivot Table)</h2>", unsafe_allow_html=True)
+        st.markdown(f"<h2 style='text-align: center; color: {C1};'>Stock Aging Summary</h2>", unsafe_allow_html=True)
         if "StockAgingSummary" in all_sheets:
             aging_df = all_sheets["StockAgingSummary"].copy(); aging_df.columns = [str(c).strip() for c in aging_df.columns]
             rename_map = {c: 'Branch' if 'branch' in str(c).lower() else 'AgeDays' if 'age' in str(c).lower() else 'PDT Fly' if any(k in str(c).lower() for k in ['pdt', 'fly']) else c for c in aging_df.columns}
