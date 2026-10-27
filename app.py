@@ -17,15 +17,15 @@ def load_data():
             qc = [c for c in df_c.columns if any(k in c for k in ['qty', 'quantity', 'count'])]
             
             if s.strip().lower() == "salessummary" and sc:
-                v = pd.to_numeric(df_c.iloc[-1][sc[0]], errors='coerce')
+                v = pd.to_numeric(df_c.iloc[-1][sc], errors='coerce')
                 if pd.notna(v): ts = float(v)
                 bc = [c for c in df_c.columns if any(k in c for k in ['branch', 'zone', 'location', 'state'])]
                 if bc:
                     for _, row in df_c.iterrows():
-                        n = str(row[bc[0]]).upper().strip(); v_br = pd.to_numeric(row[sc[0]], errors='coerce')
+                        n = str(row[bc]).upper().strip(); v_br = pd.to_numeric(row[sc], errors='coerce')
                         if pd.notna(v_br) and n not in ['NAN', '', 'GRAND TOTAL', 'TOTAL']: br[n] = br.get(n, 0.0) + float(v_br)
             if s.strip().lower() == "dailysalesreport" and qc:
-                v = pd.to_numeric(df_c.iloc[-1][qc[0]], errors='coerce')
+                v = pd.to_numeric(df_c.iloc[-1][qc], errors='coerce')
                 if pd.notna(v): tq = float(v)
             if s.strip().replace(" ", "").lower() == "agingsummary_operatingbranch":
                 try:
@@ -37,17 +37,18 @@ def load_data():
                         for c in ['Amount', 'Not Over Due']:
                             if c in ag_op.columns: ag_op[c] = pd.to_numeric(ag_op[c], errors='coerce').fillna(0)
                     rdf = pd.read_excel(xl, sheet_name=s, header=None)
-                    if rdf.shape[0] >= 30 and rdf.shape[1] >= 10:
-                        v_num = pd.to_numeric(rdf.iloc[29, 9], errors='coerce')
+                    if rdf.shape >= 30 and rdf.shape >= 10:
+                        v_num = pd.to_numeric(rdf.iloc, errors='coerce')
                         if pd.notna(v_num): ov = float(v_num)
                 except: ov = 0.0
-            if s.strip().lower() == "salespdtsummary" and sc and pc:= [c for c in df_c.columns if any(k in c for k in ['product', 'item', 'category', 'fly'])]:
-                # ইনডেক্সিং এবং টাইপ কাস্টিং লজিক পুরোপুরি ফিক্স করা হলো যেন ৬২ নাম্বার লাইনের প্রোডাক্ট ডেটা সঠিকভাবে যোগ হয়
-                p_col, s_col = pc[0], sc[0]
-                for _, row in df_c.iterrows():
-                    n = str(row[p_col]).strip(); v_p = pd.to_numeric(row[s_col], errors='coerce')
-                    if pd.notna(v_p) and n not in ['nan', '', 'GRAND TOTAL', 'TOTAL']: pr[n] = pr.get(n, 0.0) + float(v_p)
-                    
+            if s.strip().lower() == "salespdtsummary" and sc:
+                pc = [c for c in df_c.columns if any(k in c for k in ['product', 'item', 'category', 'fly'])]
+                if pc:
+                    p_col, s_col = pc, sc
+                    for _, row in df_c.iterrows():
+                        n = str(row[p_col]).strip(); v_p = pd.to_numeric(row[s_col], errors='coerce')
+                        if pd.notna(v_p) and n not in ['nan', '', 'GRAND TOTAL', 'TOTAL']: pr[n] = pr.get(n, 0.0) + float(v_p)
+                        
         b_df = pd.DataFrame(list(br.items()), columns=['Branch', 'Net Sales']).sort_values(by='Net Sales', ascending=False)
         p_df = pd.DataFrame(list(pr.items()), columns=['Product Category', 'Total Value']).sort_values(by='Total Value', ascending=False)
         return sd, sn, ts, tq, ov, b_df, p_df, ag_op
