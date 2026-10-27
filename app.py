@@ -2,7 +2,30 @@ import pandas as pd, plotly.express as px, streamlit as st
 import base64, os
 st.set_page_config(page_title="Executive Dashboard", layout="wide")
 C1, C2 = "#2E7D32", "#C8E6C9"
-st.markdown(f"<style>.kpi-box {{ background-color: {C2}; padding: 20px; border-radius: 10px; border-left: 5px solid {C1}; text-align: center; margin-bottom: 10px; }} div[data-baseweb='tag'], span[data-baseweb='tag'], [class*='stMultiSelect'] span {{ background-color: {C2} !important; color: #1b5e20 !important; border: none !important; border-radius: 4px !important; padding: 4px 8px !important; }} div[data-baseweb='tag'] button svg, [class*='stMultiSelect'] span button svg {{ fill: #1b5e20 !important; }} div[data-baseweb='select'] > div {{ border: 1px solid {C1} !important; }} div[role='button'][tabindex='0'] svg, svg[class*='baseweb-icon'] {{ fill: {C1} !important; }}</style>", unsafe_allow_html=True)
+
+st.markdown(f"""
+    <style>
+    .block-container {{
+        padding-top: 1rem !important;
+        padding-bottom: 0rem !important;
+    }}
+    .kpi-box {{
+        background-color: {C2}; padding: 20px; border-radius: 10px; border-left: 5px solid {C1}; text-align: center; margin-bottom: 10px;
+    }}
+    div[data-baseweb='tag'], span[data-baseweb='tag'], [class*='stMultiSelect'] span {{
+        background-color: {C2} !important; color: #1b5e20 !important; border: none !important; border-radius: 4px !important; padding: 4px 8px !important;
+    }}
+    div[data-baseweb='tag'] button svg, [class*='stMultiSelect'] span button svg {{
+        fill: #1b5e20 !important;
+    }}
+    div[data-baseweb='select'] > div {{
+        border: 1px solid {C1} !important;
+    }}
+    div[role='button'][tabindex='0'] svg, svg[class*='baseweb-icon'] {{
+        fill: {C1} !important;
+    }}
+    </style>
+""", unsafe_allow_html=True)
 
 @st.cache_data
 def load_and_process_dashboard_data():
@@ -62,20 +85,20 @@ if all_sheets:
     st.sidebar.title("Control Panel")
     mode = st.sidebar.radio("View:", ["Summary", "Sheet View"])
     if mode == "Summary":
-        # --- লোগোটিকে শতভাগ গাণিতিক সেন্টারে নিয়ে আসার মডিউল (Base64 CSS এনকোডিং) ---
         if os.path.exists("FT_Logo.png"):
             with open("FT_Logo.png", "rb") as image_file:
                 encoded_string = base64.b64encode(image_file.read()).decode()
             st.markdown(
                 f"""
-                <div style="display: flex; justify-content: center; align-items: center; width: 100%; margin-bottom: 15px;">
-                    <img src="data:image/png;base64,{encoded_string}" style="max-width: 320px; height: auto;">
+                <div style="display: flex; justify-content: center; align-items: center; width: 100%; margin-top: 0px; margin-bottom: 0px;">
+                    <img src="data:image/png;base64,{encoded_string}" style="max-width: 280px; height: auto;">
                 </div>
                 """,
                 unsafe_allow_html=True
             )
-                
-        st.markdown(f"<h1 style='text-align: center; color: {C1};'>Monthly Performance Dashboard</h1>", unsafe_allow_html=True)
+        
+        st.markdown(f"<h1 style='text-align: center; color: {C1}; margin-top: -10px; margin-bottom: 15px;'>Monthly Performance Dashboard</h1>", unsafe_allow_html=True)
+        
         col1, col2, col3 = st.columns(3)
         col1.markdown(f"<div class='kpi-box'><h3>Total Sales</h3><h2>₹ {total_sales:,.2f}</h2></div>", unsafe_allow_html=True)
         col2.markdown(f"<div class='kpi-box'><h3>Total Qty</h3><h2>{total_qty:,.0f} Pcs</h2></div>", unsafe_allow_html=True)
@@ -158,4 +181,4 @@ if all_sheets:
             sv = st.multiselect("Select Values:", options=df_sh[fc].unique(), default=df_sh[fc].unique())
             f_df = df_sh[df_sh[fc].isin(sv)]
             st.dataframe(f_df, use_container_width=True)
-            st.download_button(label="Download CSV", data=f_df.to_csv(index=False).encode("utf-8"), file_name=f"{sh}.csv", mime="text/csv")
+st.download_button(label="Download CSV", data=f_df.to_csv(index=False).encode("utf-8"), file_name=f"{sh}.csv", mime="text/csv")
