@@ -2,6 +2,7 @@ import pandas as pd, plotly.express as px, plotly.graph_objects as go, streamlit
 st.set_page_config(page_title="Executive Dashboard", layout="wide")
 C1, C2 = "#2E7D32", "#C8E6C9"
 st.markdown(f"""<style>.block-container {{ padding-top: 40px !important; }} .kpi-box {{ background-color: {C2}; padding: 20px; border-radius: 10px; border-left: 5px solid {C1}; text-align: center; margin-bottom: 10px; }} div[data-baseweb='tag'], span[data-baseweb='tag'], [class*='stMultiSelect'] span {{ background-color: {C2} !important; color: #1b5e20 !important; border: none !important; border-radius: 4px !important; padding: 4px 8px !important; }} div[data-baseweb='tag'] button svg, [class*='stMultiSelect'] span button svg {{ fill: #1b5e20 !important; }} div[data-baseweb='select'] > div {{ border: 1px solid {C1} !important; }} div[role='button'][tabindex='0'] svg {{ fill: {C1} !important; }}</style>""", unsafe_allow_html=True)
+
 @st.cache_data
 def load_data():
     try:
@@ -14,17 +15,18 @@ def load_data():
             df_c = df.copy(); df_c.columns = [str(c).strip().lower() for c in df_c.columns]
             sc = [c for c in df_c.columns if any(k in c for k in ['sales', 'value', 'amount'])]
             qc = [c for c in df_c.columns if any(k in c for k in ['qty', 'quantity', 'count'])]
+            
             if s.strip().lower() == "salessummary" and sc:
-                v = pd.to_numeric(df_c.iloc[-1][sc], errors='coerce')
-                if pd.notna(v).any(): ts = float(v.dropna().iloc[0] if hasattr(v.dropna(), 'iloc') else v.dropna())
+                v = pd.to_numeric(df_c.iloc[-1][sc[0]], errors='coerce')
+                if pd.notna(v): ts = float(v)
                 bc = [c for c in df_c.columns if any(k in c for k in ['branch', 'zone', 'location', 'state'])]
                 if bc:
                     for _, row in df_c.iterrows():
-                        n = str(row[bc].iloc[0] if hasattr(row[bc], 'iloc') else row[bc]).upper().strip(); v_br = pd.to_numeric(row[sc], errors='coerce').dropna()
-                        if not v_br.empty and n not in ['NAN', '', 'GRAND TOTAL', 'TOTAL']: br[n] = br.get(n, 0.0) + float(v_br.iloc[0])
+                        n = str(row[bc[0]]).upper().strip(); v_br = pd.to_numeric(row[sc[0]], errors='coerce')
+                        if pd.notna(v_br) and n not in ['NAN', '', 'GRAND TOTAL', 'TOTAL']: br[n] = br.get(n, 0.0) + float(v_br)
             if s.strip().lower() == "dailysalesreport" and qc:
-                v = pd.to_numeric(df_c.iloc[-1][qc], errors='coerce')
-                if pd.notna(v).any(): tq = float(v.dropna().iloc[0] if hasattr(v.dropna(), 'iloc') else v.dropna())
+                v = pd.to_numeric(df_c.iloc[-1][qc[0]], errors='coerce')
+                if pd.notna(v): tq = float(v)
             if s.strip().replace(" ", "").lower() == "agingsummary_operatingbranch":
                 try:
                     r_df = pd.read_excel(xl, sheet_name=s, skiprows=1); r_df.columns = [str(c).strip() for c in r_df.columns]
@@ -39,16 +41,19 @@ def load_data():
                         v_num = pd.to_numeric(rdf.iloc[29, 9], errors='coerce')
                         if pd.notna(v_num): ov = float(v_num)
                 except: ov = 0.0
-            if s.strip().lower() == "salespdtsummary" and sc:
-                pc = [c for c in df_c.columns if any(k in c for k in ['product', 'item', 'category', 'fly'])]
-                if pc:
-                    p_col, s_col = pc[0], sc[0]
-                    for _, row in df_c.iterrows():
-                        n = str(row[p_col]).strip(); v_p = pd.to_numeric(row[s_col], errors='coerce')
-                        if pd.notna(v_p) and n not in ['nan', '', 'GRAND TOTAL', 'TOTAL']: pr[n] = pr.get(n, 0.0) + float(v_p)
-        return sd, sn, ts, tq, ov, pd.DataFrame(list(br.items()), columns=['Branch', 'Net Sales']), pd.DataFrame(list(pr.items()), columns=['Product Category', 'Total Value']), ag_op
+            if s.strip().lower() == "salespdtsummary" and sc and pc:= [c for c in df_c.columns if any(k in c for k in ['product', 'item', 'category', 'fly'])]:
+                # ইনডেক্সিং এবং টাইপ কাস্টিং লজিক পুরোপুরি ফিক্স করা হলো যেন ৬২ নাম্বার লাইনের প্রোডাক্ট ডেটা সঠিকভাবে যোগ হয়
+                p_col, s_col = pc[0], sc[0]
+                for _, row in df_c.iterrows():
+                    n = str(row[p_col]).strip(); v_p = pd.to_numeric(row[s_col], errors='coerce')
+                    if pd.notna(v_p) and n not in ['nan', '', 'GRAND TOTAL', 'TOTAL']: pr[n] = pr.get(n, 0.0) + float(v_p)
+                    
+        b_df = pd.DataFrame(list(br.items()), columns=['Branch', 'Net Sales']).sort_values(by='Net Sales', ascending=False)
+        p_df = pd.DataFrame(list(pr.items()), columns=['Product Category', 'Total Value']).sort_values(by='Total Value', ascending=False)
+        return sd, sn, ts, tq, ov, b_df, p_df, ag_op
     except Exception as e:
         st.error(f"Excel Error: {e}"); return None, [], 0.0, 0.0, 0.0, pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+
 all_sheets, sheet_names, total_sales, total_qty, total_overdue, branch_df, product_df, aging_operating_df = load_data()
 if all_sheets:
     mode = st.sidebar.radio("View:", ["Summary", "Sheet View"])
