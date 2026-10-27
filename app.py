@@ -15,16 +15,16 @@ def load_data():
             sc = [c for c in df_c.columns if any(k in c for k in ['sales', 'value', 'amount'])]
             qc = [c for c in df_c.columns if any(k in c for k in ['qty', 'quantity', 'count'])]
             if s.strip().lower() == "salessummary" and sc:
-                v = pd.to_numeric(df_c.iloc[-1][sc], errors='coerce')
-                if pd.notna(v).any(): ts = float(v.dropna().iloc[0] if hasattr(v.dropna(), 'iloc') else v.dropna())
+                r = df_c.iloc[-1]; v = pd.to_numeric(r[sc], errors='coerce')
+                if pd.notna(v).any(): ts = float(v.dropna().iloc if hasattr(v.dropna(), 'iloc') else v.dropna())
                 bc = [c for c in df_c.columns if any(k in c for k in ['branch', 'zone', 'location', 'state'])]
                 if bc:
                     for _, row in df_c.iterrows():
-                        n = str(row[bc].iloc[0] if hasattr(row[bc], 'iloc') else row[bc]).upper().strip(); v_br = pd.to_numeric(row[sc], errors='coerce').dropna()
-                        if not v_br.empty and n not in ['NAN', '', 'GRAND TOTAL', 'TOTAL']: br[n] = br.get(n, 0.0) + float(v_br.iloc[0])
+                        n = str(row[bc].iloc if hasattr(row[bc], 'iloc') else row[bc]).upper().strip(); v_br = pd.to_numeric(row[sc], errors='coerce').dropna()
+                        if not v_br.empty and n not in ['NAN', '', 'GRAND TOTAL', 'TOTAL']: br[n] = br.get(n, 0.0) + float(v_br.iloc)
             if s.strip().lower() == "dailysalesreport" and qc:
-                v = pd.to_numeric(df_c.iloc[-1][qc], errors='coerce')
-                if pd.notna(v).any(): tq = float(v.dropna().iloc[0] if hasattr(v.dropna(), 'iloc') else v.dropna())
+                r = df_c.iloc[-1]; v = pd.to_numeric(r[qc], errors='coerce')
+                if pd.notna(v).any(): tq = float(v.dropna().iloc if hasattr(v.dropna(), 'iloc') else v.dropna())
             if s.strip().replace(" ", "").lower() == "agingsummary_operatingbranch":
                 try:
                     r_df = pd.read_excel(xl, sheet_name=s, skiprows=1); r_df.columns = [str(c).strip() for c in r_df.columns]
@@ -35,16 +35,15 @@ def load_data():
                         for c in ['Amount', 'Not Over Due']:
                             if c in ag_op.columns: ag_op[c] = pd.to_numeric(ag_op[c], errors='coerce').fillna(0)
                     rdf = pd.read_excel(xl, sheet_name=s, header=None)
-                    if rdf.shape[0] >= 30 and rdf.shape[1] >= 10:
-                        v_num = pd.to_numeric(rdf.iloc[29, 9], errors='coerce')
+                    if rdf.shape >= 30 and rdf.shape >= 10:
+                        v_num = pd.to_numeric(rdf.iloc, errors='coerce')
                         if pd.notna(v_num): ov = float(v_num)
                 except: ov = 0.0
-            if s.strip().lower() == "salespdtsummary" and sc:
-                pc = [c for c in df_c.columns if any(k in c for k in ['product', 'item', 'category', 'fly'])]
-                if pc:
-                    for _, row in df_c.iterrows():
-                        n = str(row[pc].iloc[0] if hasattr(row[pc], 'iloc') else row[pc]).strip(); v_p = pd.to_numeric(row[sc], errors='coerce').dropna()
-                        if not v_p.empty and n not in ['nan', '', 'GRAND TOTAL', 'TOTAL']: pr[n] = pr.get(n, 0.0) + float(v_p.iloc[0])
+            if s.strip().lower() == "salespdtsummary" and sc and pc:= [c for c in df_c.columns if any(k in c for k in ['product', 'item', 'category', 'fly'])]:
+                p_col, s_col = pc[0], sc[0] # কলাম লিস্ট থেকে স্ট্রিং নেম সুনির্দিষ্ট করা হলো
+                for _, row in df_c.iterrows():
+                    n = str(row[p_col]).strip(); v_p = pd.to_numeric(row[s_col], errors='coerce')
+                    if pd.notna(v_p) and n not in ['nan', '', 'GRAND TOTAL', 'TOTAL']: pr[n] = pr.get(n, 0.0) + float(v_p)
         return sd, sn, ts, tq, ov, pd.DataFrame(list(br.items()), columns=['Branch', 'Net Sales']), pd.DataFrame(list(pr.items()), columns=['Product Category', 'Total Value']), ag_op
     except Exception as e:
         st.error(f"Excel Error: {e}"); return None, [], 0.0, 0.0, 0.0, pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
