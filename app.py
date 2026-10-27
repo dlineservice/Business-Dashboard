@@ -63,7 +63,7 @@ if all_sheets:
     st.sidebar.title("Control Panel")
     mode = st.sidebar.radio("View:", ["Summary", "Sheet View"])
     if mode == "Summary":
-        st.markdown(f"<h1 style='text-align: center; color: {C1};'>Performance Dashboard</h1>", unsafe_allow_html=True)
+        st.markdown(f"<h1 style='text-align: center; color: {C1};'>Frontech Performance Dashboard</h1>", unsafe_allow_html=True)
         col1, col2, col3 = st.columns(3)
         col1.markdown(f"<div class='kpi-box'><h3>Total Sales</h3><h2>₹ {total_sales:,.2f}</h2></div>", unsafe_allow_html=True)
         col2.markdown(f"<div class='kpi-box'><h3>Total Qty</h3><h2>{total_qty:,.0f} Pcs</h2></div>", unsafe_allow_html=True)
