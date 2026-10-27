@@ -1,4 +1,4 @@
-import pandas as pd, plotly.express as px, streamlit as st, base64, os
+import pandas as pd, plotly.express as px, plotly.graph_objects as go, streamlit as st, base64, os
 st.set_page_config(page_title="Executive Dashboard", layout="wide")
 C1, C2 = "#2E7D32", "#C8E6C9"
 st.markdown(f"""<style>.block-container {{ padding-top: 40px !important; }} .kpi-box {{ background-color: {C2}; padding: 20px; border-radius: 10px; border-left: 5px solid {C1}; text-align: center; margin-bottom: 10px; }} div[data-baseweb='tag'], span[data-baseweb='tag'], [class*='stMultiSelect'] span {{ background-color: {C2} !important; color: #1b5e20 !important; border: none !important; border-radius: 4px !important; padding: 4px 8px !important; }} div[data-baseweb='tag'] button svg, [class*='stMultiSelect'] span button svg {{ fill: #1b5e20 !important; }} div[data-baseweb='select'] > div {{ border: 1px solid {C1} !important; }} div[role='button'][tabindex='0'] svg {{ fill: {C1} !important; }}</style>""", unsafe_allow_html=True)
@@ -31,11 +31,17 @@ def load_and_process_dashboard_data():
             if s.strip().replace(" ", "").lower() == "agingsummary_operatingbranch":
                 try:
                     raw_df = pd.read_excel(xl, sheet_name=s, skiprows=1); raw_df.columns = [str(c).strip() for c in raw_df.columns]
-                    r_map = {c: 'Branch' if 'branch' in str(c).lower() else 'Amount' if any(k in str(c).lower() for k in ['amount', 'value', 'balance', 'overdue']) else c for c in raw_df.columns}
+                    r_map = {
+                        c: 'Branch' if 'branch' in str(c).lower() else 
+                           'Not Over Due' if 'not over' in str(c).lower() or 'not_over' in str(c).lower() else
+                           'Amount' if any(k in str(c).lower() for k in ['amount', 'value', 'balance', 'overdue']) else c 
+                        for c in raw_df.columns
+                    }
                     aging_op_df = raw_df.rename(columns=r_map)
-                    if 'Branch' in aging_op_df.columns and 'Amount' in aging_op_df.columns:
+                    if 'Branch' in aging_op_df.columns:
                         aging_op_df = aging_op_df[aging_op_df['Branch'].notna() & (~aging_op_df['Branch'].astype(str).str.contains('Total|GRAND', case=False, na=False))]
-                        aging_op_df['Amount'] = pd.to_numeric(aging_op_df['Amount'], errors='coerce').fillna(0)
+                        if 'Amount' in aging_op_df.columns: aging_op_df['Amount'] = pd.to_numeric(aging_op_df['Amount'], errors='coerce').fillna(0)
+                        if 'Not Over Due' in aging_op_df.columns: aging_op_df['Not Over Due'] = pd.to_numeric(aging_op_df['Not Over Due'], errors='coerce').fillna(0)
                     rdf = pd.read_excel(xl, sheet_name=s, header=None)
                     if rdf.shape[0] >= 30 and rdf.shape[1] >= 10:
                         v_num = pd.to_numeric(rdf.iloc[29, 9], errors='coerce')
@@ -73,8 +79,30 @@ if all_sheets:
         if not product_df.empty: g2.plotly_chart(px.pie(product_df.head(10), names='Product Category', values='Total Value', hole=0.3, color_discrete_sequence=px.colors.sequential.Greens_r, title="<b>Sales Share by Product Category (Top 10)</b>"), use_container_width=True)
         
         st.markdown("<hr>", unsafe_allow_html=True)
+        # --- মডিফাইড অংশ: Customer Overdue Summary (Bar + Line Combo Chart) ---
         if not aging_operating_df.empty and 'Branch' in aging_operating_df.columns and 'Amount' in aging_operating_df.columns:
-            st.plotly_chart(px.bar(aging_operating_df.sort_values(by='Amount', ascending=False), x='Branch', y='Amount', text_auto='.2s', color_discrete_sequence=['#E53935'], template="plotly_white", title="<b>Customer Overdue Summary</b>"), use_container_width=True)
+            plot_df = aging_operating_df.sort_values(by='Amount', ascending=False)
+            
+            fig_combo = go.Figure()
+            # Overdue বার গ্রাফ
+            fig_combo.add_trace(go.Bar(
+                x=plot_df['Branch'], y=plot_df['Amount'],
+                name='Overdue Amount', marker_color='#E53935', text=plot_df['Amount'].map('{:,.0f}'.format), textposition='auto'
+            ))
+            # Not Over Due কলামটি থাকলে লাইন গ্রাফ হিসেবে অ্যাড হবে
+            if 'Not Over Due' in plot_df.columns:
+                fig_combo.add_trace(go.Scatter(
+                    x=plot_df['Branch'], y=plot_df['Not Over Due'],
+                    name='Not Over Due', mode='lines+markers', line=dict(color='#1E88E5', width=3),
+                    marker=dict(size=8)
+                ))
+            
+            fig_combo.update_layout(
+                title="<b>Customer Overdue Summary</b>", template="plotly_white",
+                xaxis_title="Branch", yaxis_title="Amount", barmode='group',
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+            )
+            st.plotly_chart(fig_combo, use_container_width=True)
         else: st.warning("Aging data empty or invalid columns for Branch/Amount.")
             
         st.markdown("<hr>", unsafe_allow_html=True)
@@ -90,12 +118,12 @@ if all_sheets:
                 for c in v_cols: aging_df[c] = pd.to_numeric(aging_df[c], errors='coerce').fillna(0)
                 f1, f2 = st.columns(2)
                 sel_branches = f1.multiselect("Filter Branch:", options=sorted(aging_df['Branch'].unique()), default=sorted(aging_df['Branch'].unique()))
-                categories = sorted(aging_df['PDT Fly'].dropna().unique()) if 'PDT Fly' in aging_df.columns else []
-                sel_categories = f2.multiselect("Filter PDT Fly:", options=categories, default=categories) if categories else []
-                f_df = aging_df[aging_df['Branch'].isin(sel_branches)]
-                if categories and sel_categories: f_df = f_df[f_df['PDT Fly'].isin(sel_categories)]
-                if not f_df.empty and v_cols:
-                    p_idx = ['Branch', 'PDT Fly'] if 'PDT Fly' in f_df.columns else ['Branch']
-                    pivot_res = pd.pivot_table(f_df, values=v_cols, index=p_idx, aggfunc='sum', margins=True, margins_name='Grand Total')
-                    st.dataframe(pivot_res, use_container_width=True)
-                else: st.warning("No dynamic numeric value columns found or data is empty for selection.")
+categories = sorted(aging_df['PDT Fly'].dropna().unique()) if 'PDT Fly' in aging_df.columns else []
+sel_categories = f2.multiselect("Filter PDT Fly:", options=categories, default=categories) if categories else []
+f_df = aging_df[aging_df['Branch'].isin(sel_branches)]
+if categories and sel_categories: f_df = f_df[f_df['PDT Fly'].isin(sel_categories)]
+if not f_df.empty and v_cols:
+p_idx = ['Branch', 'PDT Fly'] if 'PDT Fly' in f_df.columns else ['Branch']
+pivot_res = pd.pivot_table(f_df, values=v_cols, index=p_idx, aggfunc='sum', margins=True, margins_name='Grand Total')
+st.dataframe(pivot_res, use_container_width=True)
+else: st.warning("No dynamic numeric value columns found or data is empty for selection.")
