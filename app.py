@@ -1,4 +1,5 @@
 import pandas as pd, plotly.express as px, streamlit as st
+from PIL import Image
 st.set_page_config(page_title="Executive Dashboard", layout="wide")
 C1, C2 = "#2E7D32", "#C8E6C9"
 st.markdown(f"<style>.kpi-box {{ background-color: {C2}; padding: 20px; border-radius: 10px; border-left: 5px solid {C1}; text-align: center; margin-bottom: 10px; }} div[data-baseweb='tag'], span[data-baseweb='tag'], [class*='stMultiSelect'] span {{ background-color: {C2} !important; color: #1b5e20 !important; border: none !important; border-radius: 4px !important; padding: 4px 8px !important; }} div[data-baseweb='tag'] button svg, [class*='stMultiSelect'] span button svg {{ fill: #1b5e20 !important; }} div[data-baseweb='select'] > div {{ border: 1px solid {C1} !important; }} div[role='button'][tabindex='0'] svg, svg[class*='baseweb-icon'] {{ fill: {C1} !important; }}</style>", unsafe_allow_html=True)
@@ -60,15 +61,14 @@ if all_sheets:
     st.sidebar.title("Control Panel")
     mode = st.sidebar.radio("View:", ["Summary", "Sheet View"])
     if mode == "Summary":
-        # --- লোগো পুরোপুরি সেন্টারে বসানোর মডিউল ---
-        st.markdown(
-            """
-            <div style="display: flex; justify-content: center; align-items: center; margin-bottom: 10px;">
-                <img src="app/static/FT_Logo.png" width="300" onerror="this.onerror=null; this.src='FT_Logo.png';">
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+        # --- PIL ব্যবহার করে ইমেজ লোড এবং কলাম দিয়ে সেন্টারিং মডিউল ---
+        col_l1, col_l2, col_l3 = st.columns([1, 2, 1])
+        with col_l2:
+            try:
+                img = Image.open("FT_Logo.png")
+                st.image(img, width=320)
+            except:
+                pass
                 
         st.markdown(f"<h1 style='text-align: center; color: {C1};'>Fronttech Performance Dashboard</h1>", unsafe_allow_html=True)
         col1, col2, col3 = st.columns(3)
