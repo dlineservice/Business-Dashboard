@@ -1,5 +1,5 @@
 import pandas as pd, plotly.express as px, streamlit as st
-from PIL import Image
+import base64, os
 st.set_page_config(page_title="Executive Dashboard", layout="wide")
 C1, C2 = "#2E7D32", "#C8E6C9"
 st.markdown(f"<style>.kpi-box {{ background-color: {C2}; padding: 20px; border-radius: 10px; border-left: 5px solid {C1}; text-align: center; margin-bottom: 10px; }} div[data-baseweb='tag'], span[data-baseweb='tag'], [class*='stMultiSelect'] span {{ background-color: {C2} !important; color: #1b5e20 !important; border: none !important; border-radius: 4px !important; padding: 4px 8px !important; }} div[data-baseweb='tag'] button svg, [class*='stMultiSelect'] span button svg {{ fill: #1b5e20 !important; }} div[data-baseweb='select'] > div {{ border: 1px solid {C1} !important; }} div[role='button'][tabindex='0'] svg, svg[class*='baseweb-icon'] {{ fill: {C1} !important; }}</style>", unsafe_allow_html=True)
@@ -22,10 +22,10 @@ def load_and_process_dashboard_data():
             if s.strip().lower() == "salessummary" and sc:
                 r = df_c.iloc[-1]
                 v_series = pd.to_numeric(r[sc], errors='coerce').dropna()
-                if not v_series.empty: ts = float(v_series.values)
+                if not v_series.empty: ts = float(v_series.iloc[0])
                 bc = [c for c in df_c.columns if any(k in c for k in ['branch', 'zone', 'location', 'state'])]
                 if bc:
-                    b_col, s_col = bc, sc
+                    b_col, s_col = bc[0], sc[0]
                     for _, row in df_c.iterrows():
                         n = str(row[b_col]).upper().strip()
                         v_br = pd.to_numeric(row[s_col], errors='coerce')
@@ -33,18 +33,19 @@ def load_and_process_dashboard_data():
             if s.strip().lower() == "dailysalesreport" and qc:
                 r = df_c.iloc[-1]
                 v_series = pd.to_numeric(r[qc], errors='coerce').dropna()
-                if not v_series.empty: tq = float(v_series.values)
+                if not v_series.empty: tq = float(v_series.iloc[0])
             if s.strip().replace(" ", "").lower() == "agingsummary_operatingbranch":
                 try:
                     rdf = pd.read_excel(xl, sheet_name=s, header=None)
-                    if rdf.shape >= 30 and rdf.shape >= 10:
-                        v_num = pd.to_numeric(rdf.iloc, errors='coerce')
+                    if rdf.shape[0] >= 30 and rdf.shape[1] >= 10:
+                        v_raw = rdf.iloc[29, 9]
+                        v_num = pd.to_numeric(v_raw, errors='coerce')
                         if pd.notna(v_num): ov = float(v_num)
                 except: ov = 0.0
             if s.strip().lower() == "salespdtsummary":
                 pc = [c for c in df_c.columns if any(k in c for k in ['product', 'item', 'category', 'fly'])]
                 if pc and sc:
-                    p_col, s_col = pc, sc
+                    p_col, s_col = pc[0], sc[0]
                     for _, row in df_c.iterrows():
                         n = str(row[p_col]).strip()
                         v_p = pd.to_numeric(row[s_col], errors='coerce')
@@ -61,14 +62,18 @@ if all_sheets:
     st.sidebar.title("Control Panel")
     mode = st.sidebar.radio("View:", ["Summary", "Sheet View"])
     if mode == "Summary":
-        # --- কলামের অনুপাত [1, 1, 1] দিয়ে গাণিতিকভাবে লোগোটি সেন্টারে প্লেস করা হলো ---
-        col_l1, col_l2, col_l3 = st.columns([1, 1, 1])
-        with col_l2:
-            try:
-                img = Image.open("FT_Logo.png")
-                st.image(img, use_container_width=True)
-            except:
-                pass
+        # --- লোগোটিকে শতভাগ গাণিতিক সেন্টারে নিয়ে আসার মডিউল (Base64 CSS এনকোডিং) ---
+        if os.path.exists("FT_Logo.png"):
+            with open("FT_Logo.png", "rb") as image_file:
+                encoded_string = base64.b64encode(image_file.read()).decode()
+            st.markdown(
+                f"""
+                <div style="display: flex; justify-content: center; align-items: center; width: 100%; margin-bottom: 15px;">
+                    <img src="data:image/png;base64,{encoded_string}" style="max-width: 320px; height: auto;">
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
                 
         st.markdown(f"<h1 style='text-align: center; color: {C1};'>Monthly Performance Dashboard</h1>", unsafe_allow_html=True)
         col1, col2, col3 = st.columns(3)
