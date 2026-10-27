@@ -20,12 +20,12 @@ def load_and_process_dashboard_data():
             if s.strip().lower() == "salessummary" and sc:
                 r = df_c.iloc[-1]
                 v_series = pd.to_numeric(r[sc], errors='coerce')
-                v = v_series.iloc[0] if hasattr(v_series, 'iloc') else v_series
+                v = v_series.iloc if hasattr(v_series, 'iloc') else v_series
                 if pd.notna(v): ts = float(v)
                 bc = [c for c in df_c.columns if any(k in c for k in ['branch', 'zone', 'location', 'state'])]
                 if bc:
-                    b_col = bc[0]
-                    s_col = sc[0]
+                    b_col = bc
+                    s_col = sc
                     for _, row in df_c.iterrows():
                         n = str(row[b_col]).upper().strip()
                         v_br = pd.to_numeric(row[s_col], errors='coerce')
@@ -33,27 +33,27 @@ def load_and_process_dashboard_data():
             if s.strip().lower() == "dailysalesreport" and qc:
                 r = df_c.iloc[-1]
                 v_series = pd.to_numeric(r[qc], errors='coerce')
-                v = v_series.iloc[0] if hasattr(v_series, 'iloc') else v_series
+                v = v_series.iloc if hasattr(v_series, 'iloc') else v_series
                 if pd.notna(v): tq = float(v)
             if s.strip().replace(" ", "").lower() == "agingsummary_operatingbranch":
                 try:
                     rdf = pd.read_excel(xl, sheet_name=s, header=None)
-                    if rdf.shape[0] >= 30 and rdf.shape[1] >= 10:
-                        v_num = pd.to_numeric(rdf.iloc[29, 9], errors='coerce')
+                    if rdf.shape >= 30 and rdf.shape >= 10:
+                        v_num = pd.to_numeric(rdf.iloc, errors='coerce')
                         if pd.notna(v_num): ov = float(v_num)
                 except: ov = 0.0
             if s.strip().lower() == "salespdtsummary":
                 pc = [c for c in df_c.columns if any(k in c for k in ['product', 'item', 'category', 'fly'])]
                 if pc and sc:
-                    p_col = pc[0]
-                    s_col = sc[0]
+                    p_col = pc
+                    s_col = sc
                     for _, row in df_c.iterrows():
                         n = str(row[p_col]).strip()
                         v_p = pd.to_numeric(row[s_col], errors='coerce')
                         if pd.notna(v_p) and n not in ['nan', '', 'GRAND TOTAL', 'TOTAL']: pr[n] = pr.get(n, 0.0) + float(v_p)
         b_df = pd.DataFrame(list(br.items()), columns=['Branch', 'Net Sales']).sort_values(by='Net Sales', ascending=False)
         p_df = pd.DataFrame(list(pr.items()), columns=['Product Category', 'Total Value']).sort_values(by='Total Value', ascending=False)
-        return sd, sn, ts, tq, (0.0 if pd.isna(ov) else ov), b_df, p_df
+        return sd, sn, ts, tq, (0.0 if pd.isna(ov) else ov), b_df, pr_df
     except Exception as e:
         st.error(f"Excel Error: {e}"); return None, [], 0.0, 0.0, 0.0, pd.DataFrame(), pd.DataFrame()
 
@@ -63,13 +63,20 @@ if all_sheets:
     st.sidebar.title("Control Panel")
     mode = st.sidebar.radio("View:", ["Summary", "Sheet View"])
     if mode == "Summary":
-        st.markdown(f"<h1 style='text-align: center; color: {C1};'>Frontech Performance Dashboard</h1>", unsafe_allow_html=True)
+        # --- লোগো সেকশন (গিটহাব রিপোজিটরির FT_Logo.png ফাইলটি সেন্টারে দেখানোর জন্য) ---
+        logo_col1, logo_col2, logo_col3 = st.columns([2, 1, 2])
+        with logo_col2:
+            try:
+                st.image("FT_Logo.png", use_container_width=True)
+            except:
+                pass
+                
+        st.markdown(f"<h1 style='text-align: center; color: {C1};'>Fronttech Performance Dashboard</h1>", unsafe_allow_html=True)
         col1, col2, col3 = st.columns(3)
         col1.markdown(f"<div class='kpi-box'><h3>Total Sales</h3><h2>₹ {total_sales:,.2f}</h2></div>", unsafe_allow_html=True)
         col2.markdown(f"<div class='kpi-box'><h3>Total Qty</h3><h2>{total_qty:,.0f} Pcs</h2></div>", unsafe_allow_html=True)
         col3.markdown(f"<div class='kpi-box'><h3>Overdue Amount</h3><h2>₹ {total_overdue:,.2f}</h2></div>", unsafe_allow_html=True)
         
-        # চার্ট তৈরিতে ডাইনামিক হেডিং (title) যুক্ত করা হয়েছে
         g1, g2 = st.columns(2)
         if not branch_df.empty: 
             fig_bar = px.bar(
@@ -88,7 +95,7 @@ if all_sheets:
             g2.plotly_chart(fig_pie, use_container_width=True)
         
         st.markdown("<hr>", unsafe_allow_html=True)
-        st.markdown(f"<h2 style='text-align: center; color: {C1};'>Stock Aging Summary</h2>", unsafe_allow_html=True)
+        st.markdown(f"<h2 style='text-align: center; color: {C1};'>Stock Aging Summary (Pivot Table)</h2>", unsafe_allow_html=True)
         
         if "StockAgingSummary" in all_sheets:
             aging_df = all_sheets["StockAgingSummary"].copy()
