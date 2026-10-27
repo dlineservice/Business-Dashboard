@@ -16,7 +16,7 @@ def load_data():
             qc = [c for c in df_c.columns if any(k in c for k in ['qty', 'quantity', 'count'])]
             if s.strip().lower() == "salessummary" and sc:
                 v = pd.to_numeric(df_c.iloc[-1][sc], errors='coerce')
-                if pd.notna(v).any(): ts = float(v.dropna().iloc)
+                if pd.notna(v).any(): ts = float(v.dropna().iloc[0] if hasattr(v.dropna(), 'iloc') else v.dropna())
                 bc = [c for c in df_c.columns if any(k in c for k in ['branch', 'zone', 'location', 'state'])]
                 if bc:
                     for _, row in df_c.iterrows():
@@ -24,7 +24,7 @@ def load_data():
                         if not v_br.empty and n not in ['NAN', '', 'GRAND TOTAL', 'TOTAL']: br[n] = br.get(n, 0.0) + float(v_br.iloc[0])
             if s.strip().lower() == "dailysalesreport" and qc:
                 v = pd.to_numeric(df_c.iloc[-1][qc], errors='coerce')
-                if pd.notna(v).any(): tq = float(v.dropna().iloc)
+                if pd.notna(v).any(): tq = float(v.dropna().iloc[0] if hasattr(v.dropna(), 'iloc') else v.dropna())
             if s.strip().replace(" ", "").lower() == "agingsummary_operatingbranch":
                 try:
                     r_df = pd.read_excel(xl, sheet_name=s, skiprows=1); r_df.columns = [str(c).strip() for c in r_df.columns]
