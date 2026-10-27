@@ -70,7 +70,7 @@ if all_sheets:
             except:
                 pass
                 
-        st.markdown(f"<h1 style='text-align: center; color: {C1};'>Fronttech Performance Dashboard</h1>", unsafe_allow_html=True)
+        st.markdown(f"<h1 style='text-align: center; color: {C1};'>Monthly Performance Dashboard</h1>", unsafe_allow_html=True)
         col1, col2, col3 = st.columns(3)
         col1.markdown(f"<div class='kpi-box'><h3>Total Sales</h3><h2>₹ {total_sales:,.2f}</h2></div>", unsafe_allow_html=True)
         col2.markdown(f"<div class='kpi-box'><h3>Total Qty</h3><h2>{total_qty:,.0f} Pcs</h2></div>", unsafe_allow_html=True)
