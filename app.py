@@ -17,16 +17,17 @@ def load_data():
             qc = [c for c in df_c.columns if any(k in c for k in ['qty', 'quantity', 'count'])]
             
             if s.strip().lower() == "salessummary" and sc:
-                v = pd.to_numeric(df_c.iloc[-1][sc], errors='coerce')
-                if pd.notna(v): ts = float(v)
+                v = pd.to_numeric(df_c.iloc[-1][sc], errors='coerce').dropna()
+                if not v.empty: ts = float(v.iloc[0])
                 bc = [c for c in df_c.columns if any(k in c for k in ['branch', 'zone', 'location', 'state'])]
                 if bc:
                     for _, row in df_c.iterrows():
-                        n = str(row[bc]).upper().strip(); v_br = pd.to_numeric(row[sc], errors='coerce')
-                        if pd.notna(v_br) and n not in ['NAN', '', 'GRAND TOTAL', 'TOTAL']: br[n] = br.get(n, 0.0) + float(v_br)
+                        n = str(row[bc].iloc[0] if hasattr(row[bc], 'iloc') else row[bc]).upper().strip()
+                        v_br = pd.to_numeric(row[sc], errors='coerce').dropna()
+                        if not v_br.empty and n not in ['NAN', '', 'GRAND TOTAL', 'TOTAL']: br[n] = br.get(n, 0.0) + float(v_br.iloc[0])
             if s.strip().lower() == "dailysalesreport" and qc:
-                v = pd.to_numeric(df_c.iloc[-1][qc], errors='coerce')
-                if pd.notna(v): tq = float(v)
+                v = pd.to_numeric(df_c.iloc[-1][qc], errors='coerce').dropna()
+                if not v.empty: tq = float(v.iloc[0])
             if s.strip().replace(" ", "").lower() == "agingsummary_operatingbranch":
                 try:
                     r_df = pd.read_excel(xl, sheet_name=s, skiprows=1); r_df.columns = [str(c).strip() for c in r_df.columns]
@@ -38,13 +39,13 @@ def load_data():
                             if c in ag_op.columns: ag_op[c] = pd.to_numeric(ag_op[c], errors='coerce').fillna(0)
                     rdf = pd.read_excel(xl, sheet_name=s, header=None)
                     if rdf.shape >= 30 and rdf.shape >= 10:
-                        v_num = pd.to_numeric(rdf.iloc, errors='coerce')
+                        v_num = pd.to_numeric(rdf.iloc[29, 9], errors='coerce')
                         if pd.notna(v_num): ov = float(v_num)
                 except: ov = 0.0
             if s.strip().lower() == "salespdtsummary" and sc:
                 pc = [c for c in df_c.columns if any(k in c for k in ['product', 'item', 'category', 'fly'])]
                 if pc:
-                    p_col, s_col = pc, sc
+                    p_col, s_col = pc[0], sc[0]
                     for _, row in df_c.iterrows():
                         n = str(row[p_col]).strip(); v_p = pd.to_numeric(row[s_col], errors='coerce')
                         if pd.notna(v_p) and n not in ['nan', '', 'GRAND TOTAL', 'TOTAL']: pr[n] = pr.get(n, 0.0) + float(v_p)
