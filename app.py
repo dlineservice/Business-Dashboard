@@ -17,16 +17,16 @@ def load_data():
             qc = [c for c in df_c.columns if any(k in c for k in ['qty', 'quantity', 'count'])]
             
             if s.strip().lower() == "salessummary" and sc:
-                v = pd.to_numeric(df_c.iloc[-1][sc[0]], errors='coerce')
-                if pd.notna(v): ts = float(v)
+                v = pd.to_numeric(df_c.iloc[-1][sc], errors='coerce')
+                if pd.notna(v).any(): ts = float(v.dropna().iloc if hasattr(v.dropna(), 'iloc') else v.dropna())
                 bc = [c for c in df_c.columns if any(k in c for k in ['branch', 'zone', 'location', 'state'])]
                 if bc:
                     for _, row in df_c.iterrows():
-                        n = str(row[bc[0]]).upper().strip(); v_br = pd.to_numeric(row[sc[0]], errors='coerce')
-                        if pd.notna(v_br) and n not in ['NAN', '', 'GRAND TOTAL', 'TOTAL']: br[n] = br.get(n, 0.0) + float(v_br)
+                        n = str(row[bc].iloc if hasattr(row[bc], 'iloc') else row[bc]).upper().strip(); v_br = pd.to_numeric(row[sc], errors='coerce').dropna()
+                        if not v_br.empty and n not in ['NAN', '', 'GRAND TOTAL', 'TOTAL']: br[n] = br.get(n, 0.0) + float(v_br.iloc)
             if s.strip().lower() == "dailysalesreport" and qc:
-                v = pd.to_numeric(df_c.iloc[-1][qc[0]], errors='coerce')
-                if pd.notna(v): tq = float(v)
+                v = pd.to_numeric(df_c.iloc[-1][qc], errors='coerce')
+                if pd.notna(v).any(): tq = float(v.dropna().iloc if hasattr(v.dropna(), 'iloc') else v.dropna())
             if s.strip().replace(" ", "").lower() == "agingsummary_operatingbranch":
                 try:
                     r_df = pd.read_excel(xl, sheet_name=s, skiprows=1); r_df.columns = [str(c).strip() for c in r_df.columns]
@@ -37,16 +37,19 @@ def load_data():
                         for c in ['Amount', 'Not Over Due']:
                             if c in ag_op.columns: ag_op[c] = pd.to_numeric(ag_op[c], errors='coerce').fillna(0)
                     rdf = pd.read_excel(xl, sheet_name=s, header=None)
-                    if rdf.shape[0] >= 30 and rdf.shape[1] >= 10:
-                        v_num = pd.to_numeric(rdf.iloc[29, 9], errors='coerce')
+                    if rdf.shape >= 30 and rdf.shape >= 10:
+                        v_num = pd.to_numeric(rdf.iloc, errors='coerce')
                         if pd.notna(v_num): ov = float(v_num)
                 except: ov = 0.0
-            if s.strip().lower() == "salespdtsummary" and sc and pc:= [c for c in df_c.columns if any(k in c for k in ['product', 'item', 'category', 'fly'])]:
-                # এখানে কলাম ইনডেক্সিং ফিক্স করা হয়েছে যেন ডুপ্লিকেট বা ভুল ডেটা না আসে
-                for _, row in df_c.iterrows():
-                    n = str(row[pc[0]]).strip(); v_p = pd.to_numeric(row[sc[0]], errors='coerce')
-                    if pd.notna(v_p) and n not in ['nan', '', 'GRAND TOTAL', 'TOTAL']: pr[n] = pr.get(n, 0.0) + float(v_p)
-                    
+            if s.strip().lower() == "salespdtsummary" and sc:
+                pc = [c for c in df_c.columns if any(k in c for k in ['product', 'item', 'category', 'fly'])]
+                if pc:
+                    p_col = pc[0]
+                    s_col = sc[0]
+                    for _, row in df_c.iterrows():
+                        n = str(row[p_col]).strip(); v_p = pd.to_numeric(row[s_col], errors='coerce')
+                        if pd.notna(v_p) and n not in ['nan', '', 'GRAND TOTAL', 'TOTAL']: pr[n] = pr.get(n, 0.0) + float(v_p)
+                        
         b_df = pd.DataFrame(list(br.items()), columns=['Branch', 'Net Sales']).sort_values(by='Net Sales', ascending=False)
         p_df = pd.DataFrame(list(pr.items()), columns=['Product Category', 'Total Value']).sort_values(by='Total Value', ascending=False)
         return sd, sn, ts, tq, ov, b_df, p_df, ag_op
@@ -100,5 +103,5 @@ if all_sheets:
         if len(df_sh.columns) > 0:
             fc = st.selectbox("Filter Column:", options=df_sh.columns)
             f_df = df_sh[df_sh[fc].isin(st.multiselect("Select Values:", options=df_sh[fc].unique(), default=df_sh[fc].unique()))]
-            st.dataframe(f_df, use_container_width=True)
-            st.download_button(label="Download CSV", data=f_df.to_csv(index=False).encode("utf-8"), file_name=f"{sh}.csv", mime="text/csv")
+st.dataframe(f_df, use_container_width=True)
+st.download_button(label="Download CSV", data=f_df.to_csv(index=False).encode("utf-8"), file_name=f"{sh}.csv", mime="text/csv")
