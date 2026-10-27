@@ -1,7 +1,16 @@
 import pandas as pd, plotly.express as px, streamlit as st, base64, os
 st.set_page_config(page_title="Executive Dashboard", layout="wide")
 C1, C2 = "#2E7D32", "#C8E6C9"
-st.markdown(f"""<style>.block-container {{ padding-top: 1rem !important; padding-bottom: 0rem !important; }} .kpi-box {{ background-color: {C2}; padding: 20px; border-radius: 10px; border-left: 5px solid {C1}; text-align: center; margin-bottom: 10px; }} div[data-baseweb='tag'], span[data-baseweb='tag'], [class*='stMultiSelect'] span {{ background-color: {C2} !important; color: #1b5e20 !important; border: none !important; border-radius: 4px !important; padding: 4px 8px !important; }} div[data-baseweb='tag'] button svg, [class*='stMultiSelect'] span button svg {{ fill: #1b5e20 !important; }} div[data-baseweb='select'] > div {{ border: 1px solid {C1} !important; }} div[role='button'][tabindex='0'] svg, svg[class*='baseweb-icon'] {{ fill: {C1} !important; }}</style>""", unsafe_allow_html=True)
+
+# পেজের কন্টেন্টকে ২০ পিক্সেল নিচে নামানো হয়েছে (padding-top: 20px)
+st.markdown(f"""<style>
+    .block-container {{ padding-top: 20px !important; padding-bottom: 0rem !important; }} 
+    .kpi-box {{ background-color: {C2}; padding: 20px; border-radius: 10px; border-left: 5px solid {C1}; text-align: center; margin-bottom: 10px; }} 
+    div[data-baseweb='tag'], span[data-baseweb='tag'], [class*='stMultiSelect'] span {{ background-color: {C2} !important; color: #1b5e20 !important; border: none !important; border-radius: 4px !important; padding: 4px 8px !important; }} 
+    div[data-baseweb='tag'] button svg, [class*='stMultiSelect'] span button svg {{ fill: #1b5e20 !important; }} 
+    div[data-baseweb='select'] > div {{ border: 1px solid {C1} !important; }} 
+    div[role='button'][tabindex='0'] svg, svg[class*='baseweb-icon'] {{ fill: {C1} !important; }}
+</style>""", unsafe_allow_html=True)
 
 @st.cache_data
 def load_and_process_dashboard_data():
@@ -15,27 +24,33 @@ def load_and_process_dashboard_data():
             df_c = df.copy(); df_c.columns = [str(c).strip().lower() for c in df_c.columns]
             sc = [c for c in df_c.columns if any(k in c for k in ['sales', 'value', 'amount'])]
             qc = [c for c in df_c.columns if any(k in c for k in ['qty', 'quantity', 'count'])]
+            
             if s.strip().lower() == "salessummary" and sc:
-                r = df_c.iloc[-1]; v = pd.to_numeric(r[sc], errors='coerce').dropna()
-                if not v.empty: ts = float(v.iloc[0])
+                r = df_c.iloc[-1]
+                v = pd.to_numeric(r[sc[0]], errors='coerce')
+                if pd.notna(v): ts = float(v)
                 bc = [c for c in df_c.columns if any(k in c for k in ['branch', 'zone', 'location', 'state'])]
                 if bc:
                     for _, row in df_c.iterrows():
-                        n = str(row[bc]).upper().strip(); v_br = pd.to_numeric(row[sc], errors='coerce')
+                        n = str(row[bc[0]]).upper().strip()
+                        v_br = pd.to_numeric(row[sc[0]], errors='coerce')
                         if pd.notna(v_br) and n not in ['NAN', '', 'GRAND TOTAL', 'TOTAL']: br[n] = br.get(n, 0.0) + float(v_br)
             if s.strip().lower() == "dailysalesreport" and qc:
-                r = df_c.iloc[-1]; v = pd.to_numeric(r[qc], errors='coerce').dropna()
-                if not v.empty: tq = float(v.iloc[0])
+                r = df_c.iloc[-1]
+                v = pd.to_numeric(r[qc[0]], errors='coerce')
+                if pd.notna(v): tq = float(v)
             if s.strip().replace(" ", "").lower() == "agingsummary_operatingbranch":
                 try:
                     rdf = pd.read_excel(xl, sheet_name=s, header=None)
-                    if rdf.shape[0] >= 30 and rdf.shape[1] >= 10: ov = float(pd.to_numeric(rdf.iloc[29, 9], errors='coerce'))
+                    if rdf.shape[0] >= 30 and rdf.shape[1] >= 10: 
+                        v_num = pd.to_numeric(rdf.iloc[29, 9], errors='coerce')
+                        if pd.notna(v_num): ov = float(v_num)
                 except: ov = 0.0
-            if s.strip().lower() == "salespdtsummary":
+            if s.strip().lower() == "salespdtsummary" and sc:
                 pc = [c for c in df_c.columns if any(k in c for k in ['product', 'item', 'category', 'fly'])]
-                if pc and sc:
+                if pc:
                     for _, row in df_c.iterrows():
-                        n = str(row[pc]).strip(); v_p = pd.to_numeric(row[sc], errors='coerce')
+                        n = str(row[pc[0]]).strip(); v_p = pd.to_numeric(row[sc[0]], errors='coerce')
                         if pd.notna(v_p) and n not in ['nan', '', 'GRAND TOTAL', 'TOTAL']: pr[n] = pr.get(n, 0.0) + float(v_p)
         b_df = pd.DataFrame(list(br.items()), columns=['Branch', 'Net Sales']).sort_values(by='Net Sales', ascending=False)
         p_df = pd.DataFrame(list(pr.items()), columns=['Product Category', 'Total Value']).sort_values(by='Total Value', ascending=False)
