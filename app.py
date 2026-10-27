@@ -39,11 +39,13 @@ def load_data():
                         v_num = pd.to_numeric(rdf.iloc, errors='coerce')
                         if pd.notna(v_num): ov = float(v_num)
                 except: ov = 0.0
-            if s.strip().lower() == "salespdtsummary" and sc and pc:= [c for c in df_c.columns if any(k in c for k in ['product', 'item', 'category', 'fly'])]:
-                p_col, s_col = pc[0], sc[0] # কলাম লিস্ট থেকে স্ট্রিং নেম সুনির্দিষ্ট করা হলো
-                for _, row in df_c.iterrows():
-                    n = str(row[p_col]).strip(); v_p = pd.to_numeric(row[s_col], errors='coerce')
-                    if pd.notna(v_p) and n not in ['nan', '', 'GRAND TOTAL', 'TOTAL']: pr[n] = pr.get(n, 0.0) + float(v_p)
+            if s.strip().lower() == "salespdtsummary" and sc:
+                pc = [c for c in df_c.columns if any(k in c for k in ['product', 'item', 'category', 'fly'])]
+                if pc:
+                    p_col, s_col = pc[0], sc[0]
+                    for _, row in df_c.iterrows():
+                        n = str(row[p_col]).strip(); v_p = pd.to_numeric(row[s_col], errors='coerce')
+                        if pd.notna(v_p) and n not in ['nan', '', 'GRAND TOTAL', 'TOTAL']: pr[n] = pr.get(n, 0.0) + float(v_p)
         return sd, sn, ts, tq, ov, pd.DataFrame(list(br.items()), columns=['Branch', 'Net Sales']), pd.DataFrame(list(pr.items()), columns=['Product Category', 'Total Value']), ag_op
     except Exception as e:
         st.error(f"Excel Error: {e}"); return None, [], 0.0, 0.0, 0.0, pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
