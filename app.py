@@ -96,7 +96,7 @@ if all_sheets:
         st.title("Sheet View")
         sh = st.selectbox("Select Sheet:", options=sheet_names)
         df_sh = pd.read_excel("sales_data.xlsx", sheet_name=sh, skiprows=1)
-        if len(df_sh.columns) > 0:
+   if len(df_sh.columns) > 0:
         fc = st.selectbox("Filter Column:", options=df_sh.columns)
         f_df = df_sh[df_sh[fc].isin(st.multiselect("Select Values:", options=df_sh[fc].unique(), default=df_sh[fc].unique()))]
         st.dataframe(f_df, use_container_width=True)
