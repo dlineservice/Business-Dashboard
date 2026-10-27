@@ -22,10 +22,10 @@ def load_and_process_dashboard_data():
             if s.strip().lower() == "salessummary" and sc:
                 r = df_c.iloc[-1]
                 v_series = pd.to_numeric(r[sc], errors='coerce').dropna()
-                if not v_series.empty: ts = float(v_series.values[0])
+                if not v_series.empty: ts = float(v_series.values)
                 bc = [c for c in df_c.columns if any(k in c for k in ['branch', 'zone', 'location', 'state'])]
                 if bc:
-                    b_col, s_col = bc[0], sc[0]
+                    b_col, s_col = bc, sc
                     for _, row in df_c.iterrows():
                         n = str(row[b_col]).upper().strip()
                         v_br = pd.to_numeric(row[s_col], errors='coerce')
@@ -33,18 +33,18 @@ def load_and_process_dashboard_data():
             if s.strip().lower() == "dailysalesreport" and qc:
                 r = df_c.iloc[-1]
                 v_series = pd.to_numeric(r[qc], errors='coerce').dropna()
-                if not v_series.empty: tq = float(v_series.values[0])
+                if not v_series.empty: tq = float(v_series.values)
             if s.strip().replace(" ", "").lower() == "agingsummary_operatingbranch":
                 try:
                     rdf = pd.read_excel(xl, sheet_name=s, header=None)
-                    if rdf.shape[0] >= 30 and rdf.shape[1] >= 10:
-                        v_num = pd.to_numeric(rdf.iloc[29, 9], errors='coerce')
+                    if rdf.shape >= 30 and rdf.shape >= 10:
+                        v_num = pd.to_numeric(rdf.iloc, errors='coerce')
                         if pd.notna(v_num): ov = float(v_num)
                 except: ov = 0.0
             if s.strip().lower() == "salespdtsummary":
                 pc = [c for c in df_c.columns if any(k in c for k in ['product', 'item', 'category', 'fly'])]
                 if pc and sc:
-                    p_col, s_col = pc[0], sc[0]
+                    p_col, s_col = pc, sc
                     for _, row in df_c.iterrows():
                         n = str(row[p_col]).strip()
                         v_p = pd.to_numeric(row[s_col], errors='coerce')
@@ -61,12 +61,12 @@ if all_sheets:
     st.sidebar.title("Control Panel")
     mode = st.sidebar.radio("View:", ["Summary", "Sheet View"])
     if mode == "Summary":
-        # --- PIL ব্যবহার করে ইমেজ লোড এবং কলাম দিয়ে সেন্টারিং মডিউল ---
-        col_l1, col_l2, col_l3 = st.columns([1, 2, 1])
+        # --- কলামের অনুপাত [1, 1, 1] দিয়ে গাণিতিকভাবে লোগোটি সেন্টারে প্লেস করা হলো ---
+        col_l1, col_l2, col_l3 = st.columns([1, 1, 1])
         with col_l2:
             try:
                 img = Image.open("FT_Logo.png")
-                st.image(img, width=320)
+                st.image(img, use_container_width=True)
             except:
                 pass
                 
