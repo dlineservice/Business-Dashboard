@@ -8,7 +8,8 @@ def load_and_process_dashboard_data():
     try:
         xl = pd.ExcelFile("sales_data.xlsx")
         sn = xl.sheet_names
-        sd, br, pr, ts, tq, ov = {}, {}, {}, 0.0, 0.0, 0.0
+        sd, br, pr = {}, {}, {}
+        ts, tq, ov = 0.0, 0.0, 0.0
         for s in sn:
             df = pd.read_excel(xl, sheet_name=s, skiprows=1)
             sd[s] = df
@@ -20,12 +21,12 @@ def load_and_process_dashboard_data():
             if s.strip().lower() == "salessummary" and sc:
                 r = df_c.iloc[-1]
                 v_series = pd.to_numeric(r[sc], errors='coerce')
-                v = v_series.iloc if hasattr(v_series, 'iloc') else v_series
+                v = v_series.iloc[0] if hasattr(v_series, 'iloc') else v_series
                 if pd.notna(v): ts = float(v)
                 bc = [c for c in df_c.columns if any(k in c for k in ['branch', 'zone', 'location', 'state'])]
                 if bc:
-                    b_col = bc
-                    s_col = sc
+                    b_col = bc[0]
+                    s_col = sc[0]
                     for _, row in df_c.iterrows():
                         n = str(row[b_col]).upper().strip()
                         v_br = pd.to_numeric(row[s_col], errors='coerce')
@@ -33,27 +34,28 @@ def load_and_process_dashboard_data():
             if s.strip().lower() == "dailysalesreport" and qc:
                 r = df_c.iloc[-1]
                 v_series = pd.to_numeric(r[qc], errors='coerce')
-                v = v_series.iloc if hasattr(v_series, 'iloc') else v_series
+                v = v_series.iloc[0] if hasattr(v_series, 'iloc') else v_series
                 if pd.notna(v): tq = float(v)
             if s.strip().replace(" ", "").lower() == "agingsummary_operatingbranch":
                 try:
                     rdf = pd.read_excel(xl, sheet_name=s, header=None)
-                    if rdf.shape >= 30 and rdf.shape >= 10:
-                        v_num = pd.to_numeric(rdf.iloc, errors='coerce')
+                    if rdf.shape[0] >= 30 and rdf.shape[1] >= 10:
+                        v_raw = rdf.iloc[29, 9]
+                        v_num = pd.to_numeric(v_raw, errors='coerce')
                         if pd.notna(v_num): ov = float(v_num)
                 except: ov = 0.0
             if s.strip().lower() == "salespdtsummary":
                 pc = [c for c in df_c.columns if any(k in c for k in ['product', 'item', 'category', 'fly'])]
                 if pc and sc:
-                    p_col = pc
-                    s_col = sc
+                    p_col = pc[0]
+                    s_col = sc[0]
                     for _, row in df_c.iterrows():
                         n = str(row[p_col]).strip()
                         v_p = pd.to_numeric(row[s_col], errors='coerce')
                         if pd.notna(v_p) and n not in ['nan', '', 'GRAND TOTAL', 'TOTAL']: pr[n] = pr.get(n, 0.0) + float(v_p)
         b_df = pd.DataFrame(list(br.items()), columns=['Branch', 'Net Sales']).sort_values(by='Net Sales', ascending=False)
         p_df = pd.DataFrame(list(pr.items()), columns=['Product Category', 'Total Value']).sort_values(by='Total Value', ascending=False)
-        return sd, sn, ts, tq, (0.0 if pd.isna(ov) else ov), b_df, pr_df
+        return sd, sn, ts, tq, (0.0 if pd.isna(ov) else ov), b_df, p_df
     except Exception as e:
         st.error(f"Excel Error: {e}"); return None, [], 0.0, 0.0, 0.0, pd.DataFrame(), pd.DataFrame()
 
@@ -63,11 +65,11 @@ if all_sheets:
     st.sidebar.title("Control Panel")
     mode = st.sidebar.radio("View:", ["Summary", "Sheet View"])
     if mode == "Summary":
-        # --- লোগো সেকশন (গিটহাব রিপোজিটরির FT_Logo.png ফাইলটি সেন্টারে দেখানোর জন্য) ---
-        logo_col1, logo_col2, logo_col3 = st.columns([2, 1, 2])
+        # --- লোগো সেকশন ---
+        logo_col1, logo_col2, logo_col3 = st.columns([1, 2, 1])
         with logo_col2:
             try:
-                st.image("FT_Logo.png", use_container_width=True)
+                st.image("FT_Logo.png", width=300)
             except:
                 pass
                 
