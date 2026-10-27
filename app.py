@@ -17,15 +17,15 @@ def load_and_process_dashboard_data():
             qc = [c for c in df_c.columns if any(k in c for k in ['qty', 'quantity', 'count'])]
             if s.strip().lower() == "salessummary" and sc:
                 r = df_c.iloc[-1]; v = pd.to_numeric(r[sc], errors='coerce')
-                if pd.notna(v).any(): ts = float(v.dropna().iloc[0])
+                if pd.notna(v).any(): ts = float(v.dropna().iloc)
                 bc = [c for c in df_c.columns if any(k in c for k in ['branch', 'zone', 'location', 'state'])]
                 if bc:
                     for _, row in df_c.iterrows():
-                        n = str(row[bc].iloc[0] if hasattr(row[bc], 'iloc') else row[bc]).upper().strip(); v_br = pd.to_numeric(row[sc], errors='coerce').dropna()
-                        if not v_br.empty and n not in ['NAN', '', 'GRAND TOTAL', 'TOTAL']: br[n] = br.get(n, 0.0) + float(v_br.iloc[0])
+                        n = str(row[bc].iloc if hasattr(row[bc], 'iloc') else row[bc]).upper().strip(); v_br = pd.to_numeric(row[sc], errors='coerce').dropna()
+                        if not v_br.empty and n not in ['NAN', '', 'GRAND TOTAL', 'TOTAL']: br[n] = br.get(n, 0.0) + float(v_br.iloc)
             if s.strip().lower() == "dailysalesreport" and qc:
                 r = df_c.iloc[-1]; v = pd.to_numeric(r[qc], errors='coerce')
-                if pd.notna(v).any(): tq = float(v.dropna().iloc[0])
+                if pd.notna(v).any(): tq = float(v.dropna().iloc)
             if s.strip().replace(" ", "").lower() == "agingsummary_operatingbranch":
                 try:
                     raw_df = pd.read_excel(xl, sheet_name=s, skiprows=1); raw_df.columns = [str(c).strip() for c in raw_df.columns]
@@ -43,8 +43,8 @@ def load_and_process_dashboard_data():
                 pc = [c for c in df_c.columns if any(k in c for k in ['product', 'item', 'category', 'fly'])]
                 if pc:
                     for _, row in df_c.iterrows():
-                        n = str(row[pc].iloc[0] if hasattr(row[pc], 'iloc') else row[pc]).strip(); v_p = pd.to_numeric(row[sc], errors='coerce').dropna()
-                        if not v_p.empty and n not in ['nan', '', 'GRAND TOTAL', 'TOTAL']: pr[n] = pr.get(n, 0.0) + float(v_p.iloc[0])
+                        n = str(row[pc].iloc if hasattr(row[pc], 'iloc') else row[pc]).strip(); v_p = pd.to_numeric(row[sc], errors='coerce').dropna()
+                        if not v_p.empty and n not in ['nan', '', 'GRAND TOTAL', 'TOTAL']: pr[n] = pr.get(n, 0.0) + float(v_p.iloc)
         b_df = pd.DataFrame(list(br.items()), columns=['Branch', 'Net Sales']).sort_values(by='Net Sales', ascending=False)
         p_df = pd.DataFrame(list(pr.items()), columns=['Product Category', 'Total Value']).sort_values(by='Total Value', ascending=False)
         return sd, sn, ts, tq, (0.0 if pd.isna(ov) else ov), b_df, p_df, aging_op_df
@@ -71,7 +71,8 @@ if all_sheets:
         
         st.markdown("<hr>", unsafe_allow_html=True)
         if not aging_operating_df.empty and 'Branch' in aging_operating_df.columns and 'Amount' in aging_operating_df.columns:
-            st.plotly_chart(px.bar(aging_operating_df.sort_values(by='Amount', ascending=False), x='Branch', y='Amount', text_auto='.2s', color_discrete_sequence=['#E53935'], template="plotly_white", title="<b>Operating Branch Stock Aging Analysis (Overdue Amount)</b>"), use_container_width=True)
+            # চার্টের টাইটেল পরিবর্তন করে 'Customer Overdue Summary' করা হয়েছে
+            st.plotly_chart(px.bar(aging_operating_df.sort_values(by='Amount', ascending=False), x='Branch', y='Amount', text_auto='.2s', color_discrete_sequence=['#E53935'], template="plotly_white", title="<b>Customer Overdue Summary</b>"), use_container_width=True)
         else: st.warning("Aging data empty or invalid columns for Branch/Amount.")
             
         st.markdown("<hr>", unsafe_allow_html=True)
