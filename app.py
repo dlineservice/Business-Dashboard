@@ -21,12 +21,12 @@ def load_and_process_dashboard_data():
             if s.strip().lower() == "salessummary" and sc:
                 r = df_c.iloc[-1]
                 v_series = pd.to_numeric(r[sc], errors='coerce')
-                v = v_series.iloc[0] if hasattr(v_series, 'iloc') else v_series
+                v = v_series.iloc if hasattr(v_series, 'iloc') else v_series
                 if pd.notna(v): ts = float(v)
                 bc = [c for c in df_c.columns if any(k in c for k in ['branch', 'zone', 'location', 'state'])]
                 if bc:
-                    b_col = bc[0]
-                    s_col = sc[0]
+                    b_col = bc
+                    s_col = sc
                     for _, row in df_c.iterrows():
                         n = str(row[b_col]).upper().strip()
                         v_br = pd.to_numeric(row[s_col], errors='coerce')
@@ -34,21 +34,21 @@ def load_and_process_dashboard_data():
             if s.strip().lower() == "dailysalesreport" and qc:
                 r = df_c.iloc[-1]
                 v_series = pd.to_numeric(r[qc], errors='coerce')
-                v = v_series.iloc[0] if hasattr(v_series, 'iloc') else v_series
+                v = v_series.iloc if hasattr(v_series, 'iloc') else v_series
                 if pd.notna(v): tq = float(v)
             if s.strip().replace(" ", "").lower() == "agingsummary_operatingbranch":
                 try:
                     rdf = pd.read_excel(xl, sheet_name=s, header=None)
-                    if rdf.shape[0] >= 30 and rdf.shape[1] >= 10:
-                        v_raw = rdf.iloc[29, 9]
+                    if rdf.shape >= 30 and rdf.shape >= 10:
+                        v_raw = rdf.iloc
                         v_num = pd.to_numeric(v_raw, errors='coerce')
                         if pd.notna(v_num): ov = float(v_num)
                 except: ov = 0.0
             if s.strip().lower() == "salespdtsummary":
                 pc = [c for c in df_c.columns if any(k in c for k in ['product', 'item', 'category', 'fly'])]
                 if pc and sc:
-                    p_col = pc[0]
-                    s_col = sc[0]
+                    p_col = pc
+                    s_col = sc
                     for _, row in df_c.iterrows():
                         n = str(row[p_col]).strip()
                         v_p = pd.to_numeric(row[s_col], errors='coerce')
@@ -65,13 +65,15 @@ if all_sheets:
     st.sidebar.title("Control Panel")
     mode = st.sidebar.radio("View:", ["Summary", "Sheet View"])
     if mode == "Summary":
-        # --- লোগো সেকশন ---
-        logo_col1, logo_col2, logo_col3 = st.columns([1, 2, 1])
-        with logo_col2:
-            try:
-                st.image("FT_Logo.png", width=300)
-            except:
-                pass
+        # --- লোগো পুরোপুরি সেন্টারে বসানোর মডিউল ---
+        st.markdown(
+            """
+            <div style="display: flex; justify-content: center; align-items: center; margin-bottom: 10px;">
+                <img src="app/static/FT_Logo.png" width="300" onerror="this.onerror=null; this.src='FT_Logo.png';">
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
                 
         st.markdown(f"<h1 style='text-align: center; color: {C1};'>Fronttech Performance Dashboard</h1>", unsafe_allow_html=True)
         col1, col2, col3 = st.columns(3)
