@@ -2,9 +2,9 @@ import pandas as pd, plotly.express as px, streamlit as st, base64, os
 st.set_page_config(page_title="Executive Dashboard", layout="wide")
 C1, C2 = "#2E7D32", "#C8E6C9"
 
-# পেজের কন্টেন্টকে ২০ পিক্সেল নিচে নামানো হয়েছে (padding-top: 20px)
+# পেজের কন্টেন্টকে ২০ পিক্সেল নিচে নামানো হয়েছে (padding-top: 40px)
 st.markdown(f"""<style>
-    .block-container {{ padding-top: 20px !important; padding-bottom: 0rem !important; }} 
+    .block-container {{ padding-top: 40px !important; padding-bottom: 0rem !important; }} 
     .kpi-box {{ background-color: {C2}; padding: 20px; border-radius: 10px; border-left: 5px solid {C1}; text-align: center; margin-bottom: 10px; }} 
     div[data-baseweb='tag'], span[data-baseweb='tag'], [class*='stMultiSelect'] span {{ background-color: {C2} !important; color: #1b5e20 !important; border: none !important; border-radius: 4px !important; padding: 4px 8px !important; }} 
     div[data-baseweb='tag'] button svg, [class*='stMultiSelect'] span button svg {{ fill: #1b5e20 !important; }} 
