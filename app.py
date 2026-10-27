@@ -37,9 +37,12 @@ def load_data():
                         ag_op = ag_op[ag_op['Branch'].notna() & (~ag_op['Branch'].astype(str).str.contains('Total|GRAND', case=False, na=False))]
                         for c in ['Amount', 'Not Over Due']:
                             if c in ag_op.columns: ag_op[c] = pd.to_numeric(ag_op[c], errors='coerce').fillna(0)
+                    
+                    # J30 সেলের ডেটা নিখুঁতভাবে রিড করার ফিক্সড মেকানিজম (Pandas integer coordinates)
                     rdf = pd.read_excel(xl, sheet_name=s, header=None)
-                    if rdf.shape >= 30 and rdf.shape >= 10:
-                        v_num = pd.to_numeric(rdf.iloc[29, 9], errors='coerce')
+                    if rdf.shape[0] >= 30 and rdf.shape[1] >= 10:
+                        v_cell = rdf.iloc[29, 9]  # 30th row, 10th column (J)
+                        v_num = pd.to_numeric(v_cell, errors='coerce')
                         if pd.notna(v_num): ov = float(v_num)
                 except: ov = 0.0
             if s.strip().lower() == "salespdtsummary" and sc:
@@ -79,7 +82,7 @@ if all_sheets:
             fig_combo.update_layout(title="<b>Customer Overdue Summary</b>", template="plotly_white", barmode='group', legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
             st.plotly_chart(fig_combo, use_container_width=True)
         st.markdown("<hr>", unsafe_allow_html=True)
-        st.markdown(f"<h2 style='text-align: center; color: {C1};'>Stock Aging Summary</h2>", unsafe_allow_html=True)
+        st.markdown(f"<h2 style='text-align: center; color: {C1};'>Stock Aging Summary (Pivot Table)</h2>", unsafe_allow_html=True)
         if "StockAgingSummary" in all_sheets:
             aging_df = all_sheets["StockAgingSummary"].copy(); aging_df.columns = [str(c).strip() for c in aging_df.columns]
             rename_map = {c: 'Branch' if 'branch' in str(c).lower() else 'AgeDays' if 'age' in str(c).lower() else 'PDT Fly' if any(k in str(c).lower() for k in ['pdt', 'fly']) else c for c in aging_df.columns}
