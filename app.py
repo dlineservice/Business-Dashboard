@@ -20,35 +20,30 @@ def load_and_process_dashboard_data():
             
             if s.strip().lower() == "salessummary" and sc:
                 r = df_c.iloc[-1]
-                v_series = pd.to_numeric(r[sc], errors='coerce')
-                v = v_series.iloc if hasattr(v_series, 'iloc') else v_series
-                if pd.notna(v): ts = float(v)
+                v_series = pd.to_numeric(r[sc], errors='coerce').dropna()
+                if not v_series.empty: ts = float(v_series.values[0])
                 bc = [c for c in df_c.columns if any(k in c for k in ['branch', 'zone', 'location', 'state'])]
                 if bc:
-                    b_col = bc
-                    s_col = sc
+                    b_col, s_col = bc[0], sc[0]
                     for _, row in df_c.iterrows():
                         n = str(row[b_col]).upper().strip()
                         v_br = pd.to_numeric(row[s_col], errors='coerce')
                         if pd.notna(v_br) and n not in ['NAN', '', 'GRAND TOTAL', 'TOTAL']: br[n] = br.get(n, 0.0) + float(v_br)
             if s.strip().lower() == "dailysalesreport" and qc:
                 r = df_c.iloc[-1]
-                v_series = pd.to_numeric(r[qc], errors='coerce')
-                v = v_series.iloc if hasattr(v_series, 'iloc') else v_series
-                if pd.notna(v): tq = float(v)
+                v_series = pd.to_numeric(r[qc], errors='coerce').dropna()
+                if not v_series.empty: tq = float(v_series.values[0])
             if s.strip().replace(" ", "").lower() == "agingsummary_operatingbranch":
                 try:
                     rdf = pd.read_excel(xl, sheet_name=s, header=None)
-                    if rdf.shape >= 30 and rdf.shape >= 10:
-                        v_raw = rdf.iloc
-                        v_num = pd.to_numeric(v_raw, errors='coerce')
+                    if rdf.shape[0] >= 30 and rdf.shape[1] >= 10:
+                        v_num = pd.to_numeric(rdf.iloc[29, 9], errors='coerce')
                         if pd.notna(v_num): ov = float(v_num)
                 except: ov = 0.0
             if s.strip().lower() == "salespdtsummary":
                 pc = [c for c in df_c.columns if any(k in c for k in ['product', 'item', 'category', 'fly'])]
                 if pc and sc:
-                    p_col = pc
-                    s_col = sc
+                    p_col, s_col = pc[0], sc[0]
                     for _, row in df_c.iterrows():
                         n = str(row[p_col]).strip()
                         v_p = pd.to_numeric(row[s_col], errors='coerce')
