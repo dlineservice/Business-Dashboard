@@ -9,8 +9,12 @@ def load_data():
         xl = pd.ExcelFile("sales_data.xlsx")
         sn, sd, br, pr, ts, tq, ov, ag_op = xl.sheet_names, {}, {}, {}, 0.0, 0.0, 0.0, pd.DataFrame()
         for s in sn:
+            # Sheet View এর জন্য মূল অক্ষত Raw Data আগে সেভ করে রাখা হচ্ছে
+            df_raw = pd.read_excel(xl, sheet_name=s)
+            sd[s] = df_raw
+            
+            # ড্যাশবোর্ড ক্যালকুলেশন আগের মতোই skiprows=1 দিয়ে প্রসেস করা হচ্ছে
             df = pd.read_excel(xl, sheet_name=s, skiprows=1)
-            sd[s] = df
             if df.empty: continue
             df_c = df.copy(); df_c.columns = [str(c).strip().lower() for c in df_c.columns]
             sc = [c for c in df_c.columns if any(k in c for k in ['sales', 'value', 'amount'])]
@@ -38,7 +42,6 @@ def load_data():
                         for c in ['Amount', 'Not Over Due']:
                             if c in ag_op.columns: ag_op[c] = pd.to_numeric(ag_op[c], errors='coerce').fillna(0)
                     
-                    # J30 সেলের ডেটা নিখুঁতভাবে রিড করার ফিক্সড মেকানিজম (Pandas integer coordinates)
                     rdf = pd.read_excel(xl, sheet_name=s, header=None)
                     if rdf.shape[0] >= 30 and rdf.shape[1] >= 10:
                         v_cell = rdf.iloc[29, 9]  # 30th row, 10th column (J)
@@ -87,15 +90,18 @@ if all_sheets:
             aging_df = all_sheets["StockAgingSummary"].copy(); aging_df.columns = [str(c).strip() for c in aging_df.columns]
             rename_map = {c: 'Branch' if 'branch' in str(c).lower() else 'AgeDays' if 'age' in str(c).lower() else 'PDT Fly' if any(k in str(c).lower() for k in ['pdt', 'fly']) else c for c in aging_df.columns}
             aging_df = aging_df.rename(columns=rename_map)
-            if 'Branch' in aging_df.columns:
-                aging_df = aging_df[aging_df['Branch'].notna() & (~aging_df['Branch'].astype(str).str.contains('Total|GRAND', case=False, na=False))]
-                if 'AgeDays' in aging_df.columns: aging_df['AgeDays'] = pd.to_numeric(aging_df['AgeDays'], errors='coerce').fillna(0)
-                v_cols = [c for c in aging_df.columns if c not in ['Branch', 'AgeDays', 'PDT Fly']]
-                for c in v_cols: aging_df[c] = pd.to_numeric(aging_df[c], errors='coerce').fillna(0)
-                f1, f2 = st.columns(2)
-                sel_branches = f1.multiselect("Filter Branch:", options=sorted(aging_df['Branch'].unique()), default=sorted(aging_df['Branch'].unique()))
-                categories = sorted(aging_df['PDT Fly'].dropna().unique()) if 'PDT Fly' in aging_df.columns else []
-                sel_categories = f2.multiselect("Filter PDT Fly:", options=categories, default=categories) if categories else []
-                f_df = aging_df[aging_df['Branch'].isin(sel_branches)]
-                if categories and sel_categories: f_df = f_df[f_df['PDT Fly'].isin(sel_categories)]
-                if not f_df.empty and v_cols: st.dataframe(pd.pivot_table(f_df, values=v_cols, index=['Branch', 'PDT Fly'] if 'PDT Fly' in f_df.columns else ['Branch'], aggfunc='sum', margins=True, margins_name='Grand Total'), use_container_width=True)
+            val_cols = [c for c in aging_df.columns if any(k in str(c).lower() for k in ['qty', 'val', 'amount', 'balance', 'pcs']) or aging_df[c].dtype in ['int64', 'float64']]
+            val_cols = [c for c in val_cols if c not in ['Branch', 'AgeDays', 'PDT Fly']]
+            if 'Branch' in aging_df.columns and val_cols:
+                clean_aging = aging_df[aging_df['Branch'].notna() & (~aging_df['Branch'].astype(str).str.contains('Total|GRAND', case=False, na=False))].copy()
+                for vc in val_cols: clean_aging[vc] = pd.to_numeric(clean_aging[vc], errors='coerce').fillna(0)
+                summary_aging = clean_aging.groupby('Branch')[val_cols].sum().reset_index().sort_values(by=val_cols, ascending=False)
+                fig_age = px.bar(summary_aging, x='Branch', y=val_cols, title="<b>Stock Breakdown by Branch</b>", barmode='group', template="plotly_white")
+                st.plotly_chart(fig_age, use_container_width=True)
+            else: st.dataframe(aging_df.head(10), use_container_width=True)
+        else: st.warning("Stock Aging Summary sheet could not be located.")
+    elif mode == "Sheet View":
+        st.markdown(f"<h2 style='color: {C1}; text-align: center;'>Workbook Raw Sheet Explorer</h2>", unsafe_allow_html=True)
+        selected_sheet = st.selectbox("Choose a datasheet to examine:", sheet_names)
+        if selected_sheet:
+            st.dataframe(all_sheets[selected_sheet], use_container_width=True)
