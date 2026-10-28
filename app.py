@@ -9,11 +9,11 @@ def load_data():
         xl = pd.ExcelFile("sales_data.xlsx")
         sn, sd, br, pr, ts, tq, ov, ag_op = xl.sheet_names, {}, {}, {}, 0.0, 0.0, 0.0, pd.DataFrame()
         for s in sn:
-            # Sheet View এর জন্য মূল অক্ষত Raw Data আগে সেভ করে রাখা হচ্ছে
-            df_raw = pd.read_excel(xl, sheet_name=s)
+            # Sheet View এর জন্য প্রথম রো বাদ দিয়ে (skiprows=1) দ্বিতীয় রো-কে হেডার করে ডেটা সেভ করা হচ্ছে
+            df_raw = pd.read_excel(xl, sheet_name=s, skiprows=1)
             sd[s] = df_raw
             
-            # ড্যাশবোর্ড ক্যালকুলেশন আগের মতোই skiprows=1 দিয়ে প্রসেস করা হচ্ছে
+            # ড্যাশবোর্ড ক্যালকুলেশন আগের মতোই অক্ষত রাখা হয়েছে
             df = pd.read_excel(xl, sheet_name=s, skiprows=1)
             if df.empty: continue
             df_c = df.copy(); df_c.columns = [str(c).strip().lower() for c in df_c.columns]
