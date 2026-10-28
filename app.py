@@ -9,11 +9,9 @@ def load_data():
         xl = pd.ExcelFile("sales_data.xlsx")
         sn, sd, br, pr, ts, tq, ov, ag_op = xl.sheet_names, {}, {}, {}, 0.0, 0.0, 0.0, pd.DataFrame()
         for s in sn:
-            # Sheet View এর জন্য প্রথম রো বাদ দিয়ে (skiprows=1) দ্বিতীয় রো-কে হেডার করে ডেটা সেভ করা হচ্ছে
             df_raw = pd.read_excel(xl, sheet_name=s, skiprows=1)
             sd[s] = df_raw
             
-            # ড্যাশবোর্ড ক্যালকুলেশন আগের মতোই অক্ষত রাখা হয়েছে
             df = pd.read_excel(xl, sheet_name=s, skiprows=1)
             if df.empty: continue
             df_c = df.copy(); df_c.columns = [str(c).strip().lower() for c in df_c.columns]
@@ -44,7 +42,7 @@ def load_data():
                     
                     rdf = pd.read_excel(xl, sheet_name=s, header=None)
                     if rdf.shape[0] >= 30 and rdf.shape[1] >= 10:
-                        v_cell = rdf.iloc[29, 9]  # 30th row, 10th column (J)
+                        v_cell = rdf.iloc[29, 9]
                         v_num = pd.to_numeric(v_cell, errors='coerce')
                         if pd.notna(v_num): ov = float(v_num)
                 except: ov = 0.0
@@ -68,7 +66,7 @@ if all_sheets:
     if mode == "Summary":
         if os.path.exists("FT_Logo.png"):
             with open("FT_Logo.png", "rb") as f: encoded_string = base64.b64encode(f.read()).decode()
-            st.markdown(f"""<div style="display: flex; justify-content: center; align-items: center; width: 100%; margin-top: 0px; margin-bottom: 0px;"><img src="data:image/png;base64,{encoded_string}" style="max-width: 280px; height: auto;"></div>""", unsafe_allow_html=True)
+            st.markdown(f\"\"\"<div style="display: flex; justify-content: center; align-items: center; width: 100%; margin-top: 0px; margin-bottom: 0px;"><img src="data:image/png;base64,{encoded_string}" style="max-width: 280px; height: auto;"></div>\"\"\", unsafe_allow_html=True)
         st.markdown(f"<h1 style='text-align: center; color: {C1}; margin-top: -10px; margin-bottom: 15px;'>Monthly Performance Dashboard</h1>", unsafe_allow_html=True)
         col1, col2, col3 = st.columns(3)
         col1.markdown(f"<div class='kpi-box'><h3>Total Sales</h3><h2>₹ {total_sales:,.2f}</h2></div>", unsafe_allow_html=True)
@@ -104,4 +102,19 @@ if all_sheets:
         st.markdown(f"<h2 style='color: {C1}; text-align: center;'>Workbook Raw Sheet Explorer</h2>", unsafe_allow_html=True)
         selected_sheet = st.selectbox("Choose a datasheet to examine:", sheet_names)
         if selected_sheet:
-            st.dataframe(all_sheets[selected_sheet], use_container_width=True)
+            current_df = all_sheets[selected_sheet].copy()
+            st.markdown("#### 🔍 Filter Table Options")
+            search_query = st.text_input("Global Search (Type anything to filter across all columns):", "")
+            if search_query:
+                mask = current_df.astype(str).apply(lambda x: x.str.contains(search_query, case=False, na=False)).any(axis=1)
+                current_df = current_df[mask]
+st.markdown("---")
+st.markdown(f"### Visualizing: {selected_sheet}")
+def row_color_style(styled_df):
+styles = pd.DataFrame('', index=styled_df.index, columns=styled_df.columns)
+for idx in range(len(styled_df)):
+bg_color = '#F1F8E9' if idx % 2 == 0 else '#FFFFFF'
+styles.iloc[idx] = f'background-color: {bg_color}'
+return styles
+styled_table = current_df.style.apply(row_color_style, axis=None)
+st.dataframe(styled_table, use_container_width=True)
