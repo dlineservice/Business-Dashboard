@@ -132,5 +132,6 @@ if all_sheets:
             st.markdown("---")
             st.markdown(f"### Visualizing: {selected_sheet}")
             st.markdown("<style>tr:nth-child(even) {background-color: #F1F8E9 !important;} th {background-color: #2E7D32 !important; color: white !important;}</style>", unsafe_allow_html=True)
-            st.dataframe(current_df, use_container_width=True)
+            st.dataframe(current_df.style.set_properties(**{"background-color": "#F1F8E9"}).set_table_styles([{"selector": "tr:nth-child(odd)", "props": [("background-color", "#FFFFFF")]}]), use_container_width=True)
+
 
