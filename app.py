@@ -128,8 +128,9 @@ if all_sheets:
             st.markdown("#### 🔍 Filter Table Options")
             search_query = st.text_input("Global Search (Type anything to filter across all columns):", "")
             
-if search_query: current_df = current_df[current_df.astype(str).apply(lambda x: x.str.contains(search_query, case=False, na=False)).any(axis=1)]
-st.markdown("---")
-st.markdown(f"### Visualizing: {selected_sheet}")
-styled_table = current_df.style.map(lambda x: "background-color: #F1F8E9" if int(os.getpid()) % 2 == 0 else "background-color: #FFFFFF")
-st.dataframe(styled_table, use_container_width=True)
+            if search_query: current_df = current_df[current_df.astype(str).apply(lambda x: x.str.contains(search_query, case=False, na=False)).any(axis=1)]
+            st.markdown("---")
+            st.markdown(f"### Visualizing: {selected_sheet}")
+            st.markdown("<style>tr:nth-child(even) {background-color: #F1F8E9 !important;} th {background-color: #2E7D32 !important; color: white !important;}</style>", unsafe_allow_html=True)
+            st.dataframe(current_df, use_container_width=True)
+
