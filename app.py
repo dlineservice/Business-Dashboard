@@ -131,11 +131,5 @@ if all_sheets:
 if search_query: current_df = current_df[current_df.astype(str).apply(lambda x: x.str.contains(search_query, case=False, na=False)).any(axis=1)]
 st.markdown("---")
 st.markdown(f"### Visualizing: {selected_sheet}")
-def row_color_style(styled_df):
-styles = pd.DataFrame('', index=styled_df.index, columns=styled_df.columns)
-for idx in range(len(styled_df)):
-bg_color = '#F1F8E9' if idx % 2 == 0 else '#FFFFFF'
-styles.iloc[idx] = f'background-color: {bg_color}'
-return styles
-styled_table = current_df.style.apply(row_color_style, axis=None)
+styled_table = current_df.style.map(lambda x: "background-color: #F1F8E9" if int(os.getpid()) % 2 == 0 else "background-color: #FFFFFF")
 st.dataframe(styled_table, use_container_width=True)
