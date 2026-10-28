@@ -128,9 +128,8 @@ if all_sheets:
             st.markdown("#### 🔍 Filter Table Options")
             search_query = st.text_input("Global Search (Type anything to filter across all columns):", "")
             
-            if search_query:
-mask = current_df.astype(str).apply(lambda x: x.str.contains(search_query, case=False, na=False)).any(axis=1)
-current_df = current_df[mask]
+                      if search_query: current_df = current_df[current_df.astype(str).apply(lambda x: x.str.contains(search_query, case=False, na=False)).any(axis=1)]
+
 st.markdown("---")
 st.markdown(f"### Visualizing: {selected_sheet}")
 def row_color_style(styled_df):
